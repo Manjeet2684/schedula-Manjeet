@@ -23,7 +23,149 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Schedula appointment booking backend (NestJS + PostgreSQL + TypeORM).
+
+## Day 5 — Advanced Scheduling (STREAM / WAVE)
+
+### Module layout
+
+```
+src/scheduling/
+  entities/doctor-schedule-config.entity.ts   # STREAM | WAVE config (1 per doctor)
+  dto/scheduling.dto.ts                       # config + slots query + book DTOs
+  scheduling-validation.service.ts            # shared edge-case validation
+  scheduling.service.ts                       # slot generation + booking
+  scheduling.controller.ts                    # /doctor/schedule-config, /patient/appointments/*
+  scheduling.module.ts
+  requests.http                               # manual API test collection
+src/appointments/
+  entities/appointment.entity.ts              # STREAM/WAVE appointments
+src/migrations/
+  1753300000000-AddAdvancedSchedulingAndAppointments.ts
+docs/
+  SCHEDULING_FLOWCHART.md                     # Mermaid Stream + Wave flows
+```
+
+Wired in `src/app.module.ts` via `SchedulingModule`. Reuses Day 4 availability for time windows. `synchronize: false` — schema only via migrations.
+
+### Required env vars (`.env`)
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASS=your_password
+DB_NAME=schedula
+JWT_SECRET=your_jwt_secret
+PORT=3000
+```
+
+### Setup & run
+
+```bash
+npm install
+# Ensure Postgres is running and database `schedula` exists
+npm run start:dev
+```
+
+Migrations run automatically on boot (`migrationsRun: true`, `synchronize: false`).
+Day 5 migration: `src/migrations/1753300000000-AddAdvancedSchedulingAndAppointments.ts`.
+
+### Obtain doctor / patient JWTs for manual testing
+
+```bash
+# Doctor signup + login
+curl -s -X POST http://localhost:3000/auth/signup \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"doc5@test.com\",\"password\":\"secret12\",\"role\":\"DOCTOR\",\"fullName\":\"Doc Five\"}"
+
+curl -s -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"doc5@test.com\",\"password\":\"secret12\"}"
+
+# Create doctor profile, then set Day 4 availability + Day 5 schedule-config
+
+# Patient signup + login
+curl -s -X POST http://localhost:3000/auth/signup \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"pat5@test.com\",\"password\":\"secret12\",\"role\":\"PATIENT\",\"fullName\":\"Pat Five\"}"
+
+curl -s -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"pat5@test.com\",\"password\":\"secret12\"}"
+```
+
+Use tokens as `Authorization: Bearer <token>`.
+- Sample requests: `src/scheduling/requests.http`
+- Flow diagrams: `docs/SCHEDULING_FLOWCHART.md`
+
+### Scheduling endpoints
+
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| POST | `/doctor/schedule-config` | DOCTOR | Set/update STREAM or WAVE strategy |
+| GET | `/doctor/schedule-config` | DOCTOR | Current config |
+| GET | `/patient/appointments/slots?doctorId=&date=` | public | STREAM slots or WAVE capacity |
+| POST | `/patient/appointments/book` | PATIENT | Book exact slot (STREAM) or next token (WAVE) |
+
+## Day 4 — Doctor Availability (local run)
+
+### Required env vars (`.env`)
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASS=your_password
+DB_NAME=schedula
+JWT_SECRET=your_jwt_secret
+PORT=3000
+```
+
+### Setup & run
+
+```bash
+npm install
+# Ensure Postgres is running and database `schedula` exists
+npm run start:dev
+```
+
+Migrations run automatically on boot (`migrationsRun: true`, `synchronize: false`).
+Day 4 migration: `src/migrations/1753200000000-CreateAvailabilityTables.ts`.
+
+### Obtain a doctor JWT for manual testing
+
+```bash
+# 1) Signup as DOCTOR
+curl -s -X POST http://localhost:3000/auth/signup \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"doc@test.com\",\"password\":\"secret12\",\"role\":\"DOCTOR\",\"fullName\":\"Test Doc\"}"
+
+# 2) Login — copy access_token
+curl -s -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"doc@test.com\",\"password\":\"secret12\"}"
+
+# 3) Create doctor profile (required before availability APIs)
+curl -s -X POST http://localhost:3000/doctor/profile \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d "{\"fullName\":\"Test Doc\",\"specialization\":\"GP\",\"experience\":5,\"qualification\":\"MBBS\",\"consultationFee\":500,\"availability\":\"n/a\",\"profileDetails\":\"demo\"}"
+```
+
+Use the token as `Authorization: Bearer <token>` against `/doctor/availability*`.
+Sample requests: `src/availability/requests.http`.
+
+### Availability endpoints
+
+| Method | Path | Notes |
+|--------|------|-------|
+| POST | `/doctor/availability` | Create one+ recurring weekly slots |
+| GET | `/doctor/availability` | List recurring slots |
+| PATCH | `/doctor/availability/:id` | Update owned slot |
+| DELETE | `/doctor/availability/:id` | Delete owned slot |
+| POST | `/doctor/availability/override` | Create/replace custom date override |
+| GET | `/doctor/availability/date?date=YYYY-MM-DD` | Effective availability for date |
 
 ## Project setup
 

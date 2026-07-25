@@ -6,8 +6,6 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard, JwtStrategy, RolesGuard } from './auth.security';
 import { UsersModule } from '../users/users.module';
-import { DoctorController } from '../doctor/doctor.controller';
-import { PatientController } from '../patient/patient.controller';
 
 @Module({
   imports: [
@@ -22,7 +20,7 @@ import { PatientController } from '../patient/patient.controller';
       }),
     }),
   ],
-  controllers: [AuthController, DoctorController, PatientController],
+  controllers: [AuthController],
   providers: [AuthService, JwtStrategy, JwtAuthGuard, RolesGuard],
   exports: [AuthService, JwtAuthGuard, RolesGuard],
 })

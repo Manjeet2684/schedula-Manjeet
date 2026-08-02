@@ -47,18 +47,6 @@ import { UsersModule } from './users/users.module';
           database: config.get<string>('DB_NAME', 'schedula'),
         };
       },
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.get<string>('DB_HOST', 'localhost'),
-        port: Number(config.get<string>('DB_PORT', '5432')),
-        username: config.get<string>('DB_USER', 'postgres'),
-        password: config.get<string>('DB_PASS', 'postgres'),
-        database: config.get<string>('DB_NAME', 'schedula'),
-        autoLoadEntities: true,
-        synchronize: false,
-        migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
-        migrationsRun: true,
-      }),
     }),
     UsersModule,
     AuthModule,

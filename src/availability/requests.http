@@ -1,0 +1,234 @@
+### Schedula Day 4 — Doctor Availability
+@baseUrl = http://localhost:3000
+@doctorToken = {{login.response.body.access_token}}
+@slotId = {{createRecurring.response.body.0.id}}
+
+############################################
+# 0) Auth — signup + login (DOCTOR)
+############################################
+
+# @name signupDoctor
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{
+  "email": "day4.doctor@schedula.test",
+  "password": "secret12",
+  "role": "DOCTOR",
+  "fullName": "Day4 Doctor"
+}
+
+###
+
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "day4.doctor@schedula.test",
+  "password": "secret12"
+}
+
+###
+
+# @name createDoctorProfile
+POST {{baseUrl}}/doctor/profile
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "fullName": "Day4 Doctor",
+  "specialization": "General Medicine",
+  "experience": 5,
+  "qualification": "MBBS",
+  "consultationFee": 500,
+  "availability": "see /doctor/availability",
+  "profileDetails": "Day 4 test doctor"
+}
+
+############################################
+# 1) Create multiple recurring windows
+############################################
+
+###
+# @name createRecurring
+POST {{baseUrl}}/doctor/availability
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "slots": [
+    { "dayOfWeek": "MONDAY", "startTime": "09:00", "endTime": "12:00", "slotDuration": 30 },
+    { "dayOfWeek": "MONDAY", "startTime": "14:00", "endTime": "17:00", "slotDuration": 30 },
+    { "dayOfWeek": "WEDNESDAY", "startTime": "10:00", "endTime": "13:00", "slotDuration": 20 }
+  ]
+}
+
+###
+# @name listRecurring
+GET {{baseUrl}}/doctor/availability
+Authorization: Bearer {{login.response.body.access_token}}
+
+###
+# @name updateSlot
+PATCH {{baseUrl}}/doctor/availability/{{slotId}}
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "startTime": "09:30",
+  "endTime": "12:30"
+}
+
+###
+# @name deleteSlot
+DELETE {{baseUrl}}/doctor/availability/{{slotId}}
+Authorization: Bearer {{login.response.body.access_token}}
+
+############################################
+# 2) Custom overrides + effective date
+############################################
+
+###
+# @name createOverride
+POST {{baseUrl}}/doctor/availability/override
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "date": "2026-07-27",
+  "startTime": "11:00",
+  "endTime": "15:00",
+  "isUnavailable": false
+}
+
+###
+# @name markUnavailable
+POST {{baseUrl}}/doctor/availability/override
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "date": "2026-07-28",
+  "startTime": "00:00",
+  "endTime": "23:59",
+  "isUnavailable": true
+}
+
+###
+# Effective = custom override (Monday 2026-07-27)
+GET {{baseUrl}}/doctor/availability/date?date=2026-07-27
+Authorization: Bearer {{login.response.body.access_token}}
+
+###
+# Effective = recurring weekday (no override) — pick a future Monday without override
+GET {{baseUrl}}/doctor/availability/date?date=2026-08-03
+Authorization: Bearer {{login.response.body.access_token}}
+
+###
+# Effective = empty array (day with neither recurring nor override)
+GET {{baseUrl}}/doctor/availability/date?date=2026-08-02
+Authorization: Bearer {{login.response.body.access_token}}
+
+############################################
+# 3) Validation / edge cases
+############################################
+
+###
+# 409 Overlap
+POST {{baseUrl}}/doctor/availability
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "slots": [
+    { "dayOfWeek": "FRIDAY", "startTime": "10:00", "endTime": "12:00" },
+    { "dayOfWeek": "FRIDAY", "startTime": "11:00", "endTime": "13:00" }
+  ]
+}
+
+###
+# 400 Invalid time range
+POST {{baseUrl}}/doctor/availability
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "slots": [
+    { "dayOfWeek": "TUESDAY", "startTime": "15:00", "endTime": "13:00" }
+  ]
+}
+
+###
+# 409 Duplicate
+POST {{baseUrl}}/doctor/availability
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "slots": [
+    { "dayOfWeek": "WEDNESDAY", "startTime": "10:00", "endTime": "13:00" }
+  ]
+}
+
+###
+# 400 Past override date
+POST {{baseUrl}}/doctor/availability/override
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "date": "2020-01-01",
+  "startTime": "09:00",
+  "endTime": "10:00"
+}
+
+###
+# 400 Malformed override date
+POST {{baseUrl}}/doctor/availability/override
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "date": "2026-13-40",
+  "startTime": "09:00",
+  "endTime": "10:00"
+}
+
+###
+# 401 Missing token
+GET {{baseUrl}}/doctor/availability
+
+###
+# 403 Wrong role (signup patient first, then use that token)
+# @name signupPatient
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{
+  "email": "day4.patient@schedula.test",
+  "password": "secret12",
+  "role": "PATIENT",
+  "fullName": "Day4 Patient"
+}
+
+###
+# @name loginPatient
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "day4.patient@schedula.test",
+  "password": "secret12"
+}
+
+###
+POST {{baseUrl}}/doctor/availability
+Authorization: Bearer {{loginPatient.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "slots": [
+    { "dayOfWeek": "MONDAY", "startTime": "08:00", "endTime": "09:00" }
+  ]
+}

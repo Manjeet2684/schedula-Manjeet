@@ -23,7 +23,66 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Schedula appointment booking backend (NestJS + PostgreSQL + TypeORM).
+
+## Day 4 — Doctor Availability (local run)
+
+### Required env vars (`.env`)
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASS=your_password
+DB_NAME=schedula
+JWT_SECRET=your_jwt_secret
+PORT=3000
+```
+
+### Setup & run
+
+```bash
+npm install
+# Ensure Postgres is running and database `schedula` exists
+npm run start:dev
+```
+
+Migrations run automatically on boot (`migrationsRun: true`, `synchronize: false`).
+Day 4 migration: `src/migrations/1753200000000-CreateAvailabilityTables.ts`.
+
+### Obtain a doctor JWT for manual testing
+
+```bash
+# 1) Signup as DOCTOR
+curl -s -X POST http://localhost:3000/auth/signup \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"doc@test.com\",\"password\":\"secret12\",\"role\":\"DOCTOR\",\"fullName\":\"Test Doc\"}"
+
+# 2) Login — copy access_token
+curl -s -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"doc@test.com\",\"password\":\"secret12\"}"
+
+# 3) Create doctor profile (required before availability APIs)
+curl -s -X POST http://localhost:3000/doctor/profile \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d "{\"fullName\":\"Test Doc\",\"specialization\":\"GP\",\"experience\":5,\"qualification\":\"MBBS\",\"consultationFee\":500,\"availability\":\"n/a\",\"profileDetails\":\"demo\"}"
+```
+
+Use the token as `Authorization: Bearer <token>` against `/doctor/availability*`.
+Sample requests: `src/availability/requests.http`.
+
+### Availability endpoints
+
+| Method | Path | Notes |
+|--------|------|-------|
+| POST | `/doctor/availability` | Create one+ recurring weekly slots |
+| GET | `/doctor/availability` | List recurring slots |
+| PATCH | `/doctor/availability/:id` | Update owned slot |
+| DELETE | `/doctor/availability/:id` | Delete owned slot |
+| POST | `/doctor/availability/override` | Create/replace custom date override |
+| GET | `/doctor/availability/date?date=YYYY-MM-DD` | Effective availability for date |
 
 ## Project setup
 

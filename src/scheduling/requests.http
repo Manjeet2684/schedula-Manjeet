@@ -1,0 +1,279 @@
+### Day 5 — Advanced Scheduling (STREAM / WAVE)
+@baseUrl = http://localhost:3000
+
+# ---------------------------------------------------------------------------
+# Setup helpers (run first; replace tokens/ids after responses)
+# ---------------------------------------------------------------------------
+
+### Signup doctor
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{
+  "email": "day5.doctor@test.com",
+  "password": "secret12",
+  "role": "DOCTOR",
+  "fullName": "Day5 Doctor"
+}
+
+### Login doctor
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "day5.doctor@test.com",
+  "password": "secret12"
+}
+
+### Create doctor profile
+POST {{baseUrl}}/doctor/profile
+Authorization: Bearer {{doctorToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Day5 Doctor",
+  "specialization": "General Medicine",
+  "experience": 8,
+  "qualification": "MBBS, MD",
+  "consultationFee": 600,
+  "availability": "see schedule-config",
+  "profileDetails": "Day 5 demo doctor"
+}
+
+### Create recurring availability (future weekday window)
+POST {{baseUrl}}/doctor/availability
+Authorization: Bearer {{doctorToken}}
+Content-Type: application/json
+
+{
+  "slots": [
+    {
+      "dayOfWeek": "MONDAY",
+      "startTime": "10:00",
+      "endTime": "12:00"
+    }
+  ]
+}
+
+### Signup patient
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{
+  "email": "day5.patient@test.com",
+  "password": "secret12",
+  "role": "PATIENT",
+  "fullName": "Day5 Patient"
+}
+
+### Login patient
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "day5.patient@test.com",
+  "password": "secret12"
+}
+
+### Create patient profile
+POST {{baseUrl}}/patient/profile
+Authorization: Bearer {{patientToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Day5 Patient",
+  "age": 30,
+  "gender": "female",
+  "contactDetails": "9999999999"
+}
+
+# ---------------------------------------------------------------------------
+# STREAM happy path
+# ---------------------------------------------------------------------------
+
+### Set STREAM schedule config
+POST {{baseUrl}}/doctor/schedule-config
+Authorization: Bearer {{doctorToken}}
+Content-Type: application/json
+
+{
+  "schedulingType": "STREAM",
+  "slotDuration": 15,
+  "bufferTime": 5
+}
+
+### Get schedule config
+GET {{baseUrl}}/doctor/schedule-config
+Authorization: Bearer {{doctorToken}}
+
+### List STREAM slots
+GET {{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{futureMonday}}
+
+### Book STREAM slot
+POST {{baseUrl}}/patient/appointments/book
+Authorization: Bearer {{patientToken}}
+Content-Type: application/json
+
+{
+  "doctorId": "{{doctorId}}",
+  "date": "{{futureMonday}}",
+  "startTime": "10:00",
+  "endTime": "10:15"
+}
+
+# ---------------------------------------------------------------------------
+# STREAM edge cases
+# ---------------------------------------------------------------------------
+
+### Invalid slotDuration (≤ 0) — expect 400
+POST {{baseUrl}}/doctor/schedule-config
+Authorization: Bearer {{doctorToken}}
+Content-Type: application/json
+
+{
+  "schedulingType": "STREAM",
+  "slotDuration": 0,
+  "bufferTime": 0
+}
+
+### Invalid bufferTime (< 0) — expect 400
+POST {{baseUrl}}/doctor/schedule-config
+Authorization: Bearer {{doctorToken}}
+Content-Type: application/json
+
+{
+  "schedulingType": "STREAM",
+  "slotDuration": 15,
+  "bufferTime": -5
+}
+
+### Book past STREAM slot — expect 400
+POST {{baseUrl}}/patient/appointments/book
+Authorization: Bearer {{patientToken}}
+Content-Type: application/json
+
+{
+  "doctorId": "{{doctorId}}",
+  "date": "2020-01-06",
+  "startTime": "10:00",
+  "endTime": "10:15"
+}
+
+### Duplicate STREAM booking — expect 409
+POST {{baseUrl}}/patient/appointments/book
+Authorization: Bearer {{patientToken}}
+Content-Type: application/json
+
+{
+  "doctorId": "{{doctorId}}",
+  "date": "{{futureMonday}}",
+  "startTime": "10:00",
+  "endTime": "10:15"
+}
+
+# ---------------------------------------------------------------------------
+# WAVE happy path + capacity
+# ---------------------------------------------------------------------------
+
+### Set WAVE schedule config
+POST {{baseUrl}}/doctor/schedule-config
+Authorization: Bearer {{doctorToken}}
+Content-Type: application/json
+
+{
+  "schedulingType": "WAVE",
+  "maxCapacity": 2
+}
+
+### List WAVE capacity
+GET {{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{futureMonday}}
+
+### Book WAVE token 1
+POST {{baseUrl}}/patient/appointments/book
+Authorization: Bearer {{patientToken}}
+Content-Type: application/json
+
+{
+  "doctorId": "{{doctorId}}",
+  "date": "{{futureMonday}}"
+}
+
+### Signup second patient (for capacity fill)
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{
+  "email": "day5.patient2@test.com",
+  "password": "secret12",
+  "role": "PATIENT",
+  "fullName": "Day5 Patient Two"
+}
+
+### Book WAVE token 2 (after patient2 login + profile)
+POST {{baseUrl}}/patient/appointments/book
+Authorization: Bearer {{patient2Token}}
+Content-Type: application/json
+
+{
+  "doctorId": "{{doctorId}}",
+  "date": "{{futureMonday}}"
+}
+
+### Wave full — expect 409 "Wave window is fully booked"
+POST {{baseUrl}}/patient/appointments/book
+Authorization: Bearer {{patientToken}}
+Content-Type: application/json
+
+{
+  "doctorId": "{{doctorId}}",
+  "date": "{{futureMonday}}"
+}
+
+### Invalid maxCapacity — expect 400
+POST {{baseUrl}}/doctor/schedule-config
+Authorization: Bearer {{doctorToken}}
+Content-Type: application/json
+
+{
+  "schedulingType": "WAVE",
+  "maxCapacity": 0
+}
+
+# ---------------------------------------------------------------------------
+# General edge cases
+# ---------------------------------------------------------------------------
+
+### Invalid scheduling type — expect 400
+POST {{baseUrl}}/doctor/schedule-config
+Authorization: Bearer {{doctorToken}}
+Content-Type: application/json
+
+{
+  "schedulingType": "BATCH"
+}
+
+### Doctor not found (slots) — expect 404
+GET {{baseUrl}}/patient/appointments/slots?doctorId=00000000-0000-4000-8000-000000000000&date={{futureMonday}}
+
+### Unauthorized book (no token) — expect 401
+POST {{baseUrl}}/patient/appointments/book
+Content-Type: application/json
+
+{
+  "doctorId": "{{doctorId}}",
+  "date": "{{futureMonday}}",
+  "startTime": "10:00",
+  "endTime": "10:15"
+}
+
+### Wrong role (doctor booking) — expect 403
+POST {{baseUrl}}/patient/appointments/book
+Authorization: Bearer {{doctorToken}}
+Content-Type: application/json
+
+{
+  "doctorId": "{{doctorId}}",
+  "date": "{{futureMonday}}",
+  "startTime": "10:20",
+  "endTime": "10:35"
+}

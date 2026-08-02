@@ -11,6 +11,7 @@ import {
 import { Doctor } from '../../doctor/doctor.entity';
 import { Patient } from '../../patient/patient.entity';
 import { SchedulingType } from '../../scheduling/entities/doctor-schedule-config.entity';
+import { Slot } from '../../slots/slot.entity';
 
 export enum AppointmentStatus {
   BOOKED = 'BOOKED',
@@ -38,10 +39,18 @@ export class Appointment {
   @JoinColumn({ name: 'patient_id' })
   patient!: Patient;
 
+  /** STREAM bookings link to a persisted Slot; WAVE stays null. */
+  @Column({ name: 'slot_id', type: 'uuid', nullable: true })
+  slotId?: string | null;
+
+  @ManyToOne(() => Slot, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'slot_id' })
+  slot?: Slot | null;
+
   @Column({ type: 'enum', enum: SchedulingType })
   appointmentType!: SchedulingType;
 
-  /** Calendar date only (YYYY-MM-DD). */
+  /** Calendar date only (YYYY-MM-DD). Exposed as appointmentDate in Day 6 APIs. */
   @Column({ type: 'date' })
   date!: string;
 

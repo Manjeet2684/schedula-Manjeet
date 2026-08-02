@@ -1,0 +1,136 @@
+{
+  "info": {
+    "name": "Schedula Day 6 — Appointment APIs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Book / list / cancel appointments with persisted Slot ids. Set collection variables: baseUrl, patientToken, doctorToken, doctorId, slotId, appointmentId, futureDate."
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "patientToken", "value": "" },
+    { "key": "doctorToken", "value": "" },
+    { "key": "doctorId", "value": "" },
+    { "key": "slotId", "value": "" },
+    { "key": "appointmentId", "value": "" },
+    { "key": "futureDate", "value": "2026-09-21" }
+  ],
+  "item": [
+    {
+      "name": "List STREAM slots (materialize)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{futureDate}}"
+      }
+    },
+    {
+      "name": "Book appointment — 201",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{patientToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"doctorId\": \"{{doctorId}}\",\n  \"slotId\": \"{{slotId}}\",\n  \"date\": \"{{futureDate}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"09:15\"\n}"
+        },
+        "url": "{{baseUrl}}/appointment"
+      }
+    },
+    {
+      "name": "Duplicate book — 400",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{patientToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"doctorId\": \"{{doctorId}}\",\n  \"slotId\": \"{{slotId}}\",\n  \"date\": \"{{futureDate}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"09:15\"\n}"
+        },
+        "url": "{{baseUrl}}/appointment"
+      }
+    },
+    {
+      "name": "Past slot — 400",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{patientToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"doctorId\": \"{{doctorId}}\",\n  \"slotId\": \"{{slotId}}\",\n  \"date\": \"2020-01-06\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"09:15\"\n}"
+        },
+        "url": "{{baseUrl}}/appointment"
+      }
+    },
+    {
+      "name": "Patient my appointments — 200",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{patientToken}}" }
+        ],
+        "url": "{{baseUrl}}/appointment/my"
+      }
+    },
+    {
+      "name": "Doctor appointments — 200",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{doctorToken}}" }
+        ],
+        "url": "{{baseUrl}}/doctor/appointments"
+      }
+    },
+    {
+      "name": "Cancel appointment — 200",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{patientToken}}" }
+        ],
+        "url": "{{baseUrl}}/appointment/{{appointmentId}}/cancel"
+      }
+    },
+    {
+      "name": "Re-cancel — 400",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{patientToken}}" }
+        ],
+        "url": "{{baseUrl}}/appointment/{{appointmentId}}/cancel"
+      }
+    },
+    {
+      "name": "Malformed appointment id — 400",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{patientToken}}" }
+        ],
+        "url": "{{baseUrl}}/appointment/not-a-uuid/cancel"
+      }
+    },
+    {
+      "name": "Wrong role book — 403",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{doctorToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"doctorId\": \"{{doctorId}}\",\n  \"slotId\": \"{{slotId}}\",\n  \"date\": \"{{futureDate}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"09:15\"\n}"
+        },
+        "url": "{{baseUrl}}/appointment"
+      }
+    }
+  ]
+}

@@ -15,6 +15,7 @@ import { CustomAvailability } from '../availability/entities/custom-availability
 import { RecurringAvailability } from '../availability/entities/recurring-availability.entity';
 import { Doctor } from '../doctor/doctor.entity';
 import { Patient } from '../patient/patient.entity';
+import { Slot } from '../slots/slot.entity';
 import {
   BookAppointmentDto,
   UpsertScheduleConfigDto,
@@ -32,6 +33,7 @@ type AvailabilityWindow = {
 };
 
 export type StreamSlotView = {
+  id: string;
   startTime: string;
   endTime: string;
   isBooked: boolean;
@@ -56,10 +58,56 @@ export class SchedulingService {
     private readonly doctorRepo: Repository<Doctor>,
     @InjectRepository(Patient)
     private readonly patientRepo: Repository<Patient>,
+    @InjectRepository(Slot)
+    private readonly slotRepo: Repository<Slot>,
     private readonly availabilityService: AvailabilityService,
     private readonly validation: SchedulingValidationService,
     private readonly dataSource: DataSource,
   ) {}
+
+  /**
+   * Upsert persisted Slot rows for generated STREAM windows.
+   * Preserves isBooked so Day 6 cancel/book stay consistent after redeploy.
+   */
+  private async materializeStreamSlots(
+    doctorId: string,
+    date: string,
+    generated: Array<{ startTime: string; endTime: string }>,
+  ): Promise<StreamSlotView[]> {
+    const views: StreamSlotView[] = [];
+
+    for (const g of generated) {
+      let slot = await this.slotRepo.findOne({
+        where: {
+          doctorId,
+          date,
+          startTime: g.startTime,
+          endTime: g.endTime,
+        },
+      });
+
+      if (!slot) {
+        slot = await this.slotRepo.save(
+          this.slotRepo.create({
+            doctorId,
+            date,
+            startTime: g.startTime,
+            endTime: g.endTime,
+            isBooked: false,
+          }),
+        );
+      }
+
+      views.push({
+        id: slot.id,
+        startTime: this.validation.fromDbTime(String(slot.startTime)),
+        endTime: this.validation.fromDbTime(String(slot.endTime)),
+        isBooked: slot.isBooked,
+      });
+    }
+
+    return views;
+  }
 
   private async requireDoctorByUserId(userId: string): Promise<Doctor> {
     const doctor = await this.doctorRepo.findOne({ where: { userId } });
@@ -238,23 +286,7 @@ export class SchedulingService {
         bufferTime,
       );
 
-      const booked = await this.appointmentRepo.find({
-        where: {
-          doctorId: doctor.id,
-          date,
-          status: AppointmentStatus.BOOKED,
-          appointmentType: SchedulingType.STREAM,
-        },
-      });
-
-      return generated.map((slot) => {
-        const isBooked = booked.some(
-          (a) =>
-            this.validation.fromDbTime(String(a.startTime)) === slot.startTime &&
-            this.validation.fromDbTime(String(a.endTime)) === slot.endTime,
-        );
-        return { ...slot, isBooked };
-      });
+      return this.materializeStreamSlots(doctor.id, date, generated);
     }
 
     const maxCapacity = config.maxCapacity ?? 0;
@@ -397,18 +429,43 @@ export class SchedulingService {
       }
     }
 
-    const appointment = this.appointmentRepo.create({
-      doctorId: doctor.id,
-      patientId: patient.id,
-      appointmentType: SchedulingType.STREAM,
-      date: dto.date,
-      startTime,
-      endTime,
-      tokenNumber: null,
-      status: AppointmentStatus.BOOKED,
-    });
+    // Keep Day 5 book path in sync with persisted Slot rows (Day 6).
+    const [persisted] = await this.materializeStreamSlots(doctor.id, dto.date, [
+      { startTime, endTime },
+    ]);
+    if (persisted.isBooked) {
+      throw new ConflictException(
+        `Slot ${startTime}–${endTime} on ${dto.date} is already booked`,
+      );
+    }
 
-    return this.appointmentRepo.save(appointment);
+    return this.dataSource.transaction(async (manager) => {
+      const slot = await manager
+        .createQueryBuilder(Slot, 's')
+        .setLock('pessimistic_write')
+        .where('s.id = :id', { id: persisted.id })
+        .getOne();
+      if (!slot || slot.isBooked) {
+        throw new ConflictException(
+          `Slot ${startTime}–${endTime} on ${dto.date} is already booked`,
+        );
+      }
+      slot.isBooked = true;
+      await manager.save(slot);
+
+      const appointment = manager.create(Appointment, {
+        doctorId: doctor.id,
+        patientId: patient.id,
+        slotId: slot.id,
+        appointmentType: SchedulingType.STREAM,
+        date: dto.date,
+        startTime,
+        endTime,
+        tokenNumber: null,
+        status: AppointmentStatus.BOOKED,
+      });
+      return manager.save(appointment);
+    });
   }
 
   /**

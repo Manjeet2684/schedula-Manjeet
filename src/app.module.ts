@@ -4,10 +4,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { join } from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AppointmentModule } from './appointment/appointment.module';
 import { AuthModule } from './auth/auth.module';
 import { AvailabilityModule } from './availability/availability.module';
 import { DoctorModule } from './doctor/doctor.module';
 import { PatientModule } from './patient/patient.module';
+import { SchedulingModule } from './scheduling/scheduling.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -16,6 +18,35 @@ import { UsersModule } from './users/users.module';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const databaseUrl = config.get<string>('DATABASE_URL');
+        const ssl =
+          config.get<string>('DB_SSL') === 'true'
+            ? { rejectUnauthorized: false }
+            : undefined;
+
+        const base = {
+          type: 'postgres' as const,
+          autoLoadEntities: true,
+          synchronize: false,
+          migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
+          migrationsRun: true,
+          ssl,
+        };
+
+        if (databaseUrl) {
+          return { ...base, url: databaseUrl };
+        }
+
+        return {
+          ...base,
+          host: config.get<string>('DB_HOST', 'localhost'),
+          port: Number(config.get<string>('DB_PORT', '5432')),
+          username: config.get<string>('DB_USER', 'postgres'),
+          password: config.get<string>('DB_PASS', 'postgres'),
+          database: config.get<string>('DB_NAME', 'schedula'),
+        };
+      },
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
         host: config.get<string>('DB_HOST', 'localhost'),
@@ -34,6 +65,8 @@ import { UsersModule } from './users/users.module';
     DoctorModule,
     PatientModule,
     AvailabilityModule,
+    SchedulingModule,
+    AppointmentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

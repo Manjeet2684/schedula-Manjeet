@@ -1,9 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { join } from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { DoctorModule } from './doctor/doctor.module';
+import { PatientModule } from './patient/patient.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -20,11 +23,15 @@ import { UsersModule } from './users/users.module';
         password: config.get<string>('DB_PASS', 'postgres'),
         database: config.get<string>('DB_NAME', 'schedula'),
         autoLoadEntities: true,
-        synchronize: true,
+        synchronize: false,
+        migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
+        migrationsRun: true,
       }),
     }),
     UsersModule,
     AuthModule,
+    DoctorModule,
+    PatientModule,
   ],
   controllers: [AppController],
   providers: [AppService],

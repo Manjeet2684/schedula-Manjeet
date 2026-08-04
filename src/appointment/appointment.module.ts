@@ -2,8 +2,10 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Appointment } from '../appointments/entities/appointment.entity';
 import { AuthModule } from '../auth/auth.module';
+import { AvailabilityModule } from '../availability/availability.module';
 import { Doctor } from '../doctor/doctor.entity';
 import { Patient } from '../patient/patient.entity';
+import { DoctorScheduleConfig } from '../scheduling/entities/doctor-schedule-config.entity';
 import { Slot } from '../slots/slot.entity';
 import { AppointmentController } from './appointment.controller';
 import { AppointmentService } from './appointment.service';
@@ -14,8 +16,15 @@ import { AppointmentService } from './appointment.service';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Appointment, Slot, Doctor, Patient]),
+    TypeOrmModule.forFeature([
+      Appointment,
+      Slot,
+      Doctor,
+      Patient,
+      DoctorScheduleConfig,
+    ]),
     AuthModule,
+    AvailabilityModule,
   ],
   controllers: [AppointmentController],
   providers: [AppointmentService],

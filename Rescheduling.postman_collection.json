@@ -1,0 +1,192 @@
+{
+  "info": {
+    "name": "Schedula — Appointment Rescheduling",
+    "description": "Reschedule & cancel cutoff scenarios. Set collection variables: baseUrl, authToken, appointmentId, targetSlotId, waveDate, bookedSlotId, pastDate.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "authToken", "value": "" },
+    { "key": "appointmentId", "value": "" },
+    { "key": "targetSlotId", "value": "" },
+    { "key": "bookedSlotId", "value": "" },
+    { "key": "waveDate", "value": "2026-09-28" },
+    { "key": "futureDate", "value": "2026-09-21" },
+    { "key": "pastDate", "value": "2020-01-06" },
+    { "key": "nonOwnerToken", "value": "" },
+    { "key": "cutoffAppointmentId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Successful Stream Reschedule",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{authToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"schedulingType\": \"STREAM\",\n  \"slotId\": \"{{targetSlotId}}\",\n  \"date\": \"{{futureDate}}\",\n  \"startTime\": \"11:00\",\n  \"endTime\": \"11:15\"\n}"
+        },
+        "url": "{{baseUrl}}/appointment/{{appointmentId}}/reschedule",
+        "description": "Happy path: reschedule BOOKED STREAM appointment to a free future slot."
+      }
+    },
+    {
+      "name": "2. Successful Wave Reschedule",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{authToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"schedulingType\": \"WAVE\",\n  \"date\": \"{{waveDate}}\"\n}"
+        },
+        "url": "{{baseUrl}}/appointment/{{appointmentId}}/reschedule",
+        "description": "Happy path: reschedule to a WAVE window (cross-type STREAM→WAVE allowed)."
+      }
+    },
+    {
+      "name": "3. Reschedule to Past Time — 400",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{authToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"schedulingType\": \"STREAM\",\n  \"slotId\": \"{{targetSlotId}}\",\n  \"date\": \"{{pastDate}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"09:15\"\n}"
+        },
+        "url": "{{baseUrl}}/appointment/{{appointmentId}}/reschedule",
+        "description": "Expect 400 Bad Request when target timestamp is in the past."
+      }
+    },
+    {
+      "name": "4. Reschedule to Already-Booked Slot — 409",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{authToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"schedulingType\": \"STREAM\",\n  \"slotId\": \"{{bookedSlotId}}\",\n  \"date\": \"{{futureDate}}\",\n  \"startTime\": \"11:00\",\n  \"endTime\": \"11:15\"\n}"
+        },
+        "url": "{{baseUrl}}/appointment/{{appointmentId}}/reschedule",
+        "description": "Expect 409 Conflict with suggestedSlot alternative."
+      }
+    },
+    {
+      "name": "5. Reschedule to Full Wave — 409",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{authToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"schedulingType\": \"WAVE\",\n  \"date\": \"{{waveDate}}\"\n}"
+        },
+        "url": "{{baseUrl}}/appointment/{{appointmentId}}/reschedule",
+        "description": "Expect 409 when WAVE capacity is full; suggestedSlot.slotId is null."
+      }
+    },
+    {
+      "name": "6. Reschedule Cancelled Appointment — 400",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{authToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"schedulingType\": \"STREAM\",\n  \"slotId\": \"{{targetSlotId}}\",\n  \"date\": \"{{futureDate}}\",\n  \"startTime\": \"11:00\",\n  \"endTime\": \"11:15\"\n}"
+        },
+        "url": "{{baseUrl}}/appointment/{{appointmentId}}/reschedule",
+        "description": "Expect 400 when appointment status is CANCELLED."
+      }
+    },
+    {
+      "name": "7. Reschedule by Non-Owner — 403",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{nonOwnerToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"schedulingType\": \"STREAM\",\n  \"slotId\": \"{{targetSlotId}}\",\n  \"date\": \"{{futureDate}}\",\n  \"startTime\": \"11:00\",\n  \"endTime\": \"11:15\"\n}"
+        },
+        "url": "{{baseUrl}}/appointment/{{appointmentId}}/reschedule",
+        "description": "Expect 403 Forbidden when JWT patient does not own the appointment."
+      }
+    },
+    {
+      "name": "8. Reschedule with Invalid Appointment ID — 404",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{authToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"schedulingType\": \"STREAM\",\n  \"slotId\": \"{{targetSlotId}}\",\n  \"date\": \"{{futureDate}}\",\n  \"startTime\": \"11:00\",\n  \"endTime\": \"11:15\"\n}"
+        },
+        "url": "{{baseUrl}}/appointment/00000000-0000-4000-8000-000000000099/reschedule",
+        "description": "Expect 404 Not Found for unknown appointment UUID."
+      }
+    },
+    {
+      "name": "9. Reschedule Within 30-Minute Cutoff — 400",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{authToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"schedulingType\": \"STREAM\",\n  \"slotId\": \"{{targetSlotId}}\",\n  \"date\": \"{{futureDate}}\",\n  \"startTime\": \"11:00\",\n  \"endTime\": \"11:15\"\n}"
+        },
+        "url": "{{baseUrl}}/appointment/{{cutoffAppointmentId}}/reschedule",
+        "description": "Expect 400 when current appointment starts within 30 minutes."
+      }
+    },
+    {
+      "name": "10. Cancel Within 30-Minute Cutoff — 400",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{authToken}}" }
+        ],
+        "url": "{{baseUrl}}/appointment/{{cutoffAppointmentId}}/cancel",
+        "description": "Expect 400 when cancelling an appointment within 30 minutes of start."
+      }
+    },
+    {
+      "name": "11. Reschedule to Same Slot/Time — 400",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{authToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"schedulingType\": \"STREAM\",\n  \"slotId\": \"{{targetSlotId}}\",\n  \"date\": \"{{futureDate}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"10:15\"\n}"
+        },
+        "url": "{{baseUrl}}/appointment/{{appointmentId}}/reschedule",
+        "description": "Expect 400 when target matches the appointment's current slot/time."
+      }
+    }
+  ]
+}

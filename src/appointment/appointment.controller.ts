@@ -17,7 +17,10 @@ import {
 } from '../auth/auth.security';
 import { Role } from '../users/user.entity';
 import { AppointmentService } from './appointment.service';
-import { CreateAppointmentDto } from './dto/appointment.dto';
+import {
+  CreateAppointmentDto,
+  RescheduleAppointmentDto,
+} from './dto/appointment.dto';
 
 @Controller()
 export class AppointmentController {
@@ -48,6 +51,17 @@ export class AppointmentController {
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ) {
     return this.appointmentService.cancel(req.user.userId, id);
+  }
+
+  @Patch('appointment/:id/reschedule')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.PATIENT)
+  reschedule(
+    @Req() req: { user: JwtPayloadUser },
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Body() dto: RescheduleAppointmentDto,
+  ) {
+    return this.appointmentService.reschedule(req.user.userId, id, dto);
   }
 
   @Get('doctor/appointments')

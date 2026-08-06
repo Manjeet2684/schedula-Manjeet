@@ -1,0 +1,80 @@
+{
+  "info": {
+    "name": "Schedula — Availability Expansion",
+    "description": "PATCH /doctor/availability/:id/expand test cases. Set baseUrl, doctorToken, patientToken, availabilityId, expandDate.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "doctorToken", "value": "" },
+    { "key": "patientToken", "value": "" },
+    { "key": "availabilityId", "value": "" },
+    { "key": "expandDate", "value": "2026-09-07" }
+  ],
+  "item": [
+    {
+      "name": "a) Valid STREAM expansion",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{doctorToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"date\": \"{{expandDate}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"13:00\",\n  \"slotDuration\": 15\n}"
+        },
+        "url": "{{baseUrl}}/doctor/availability/{{availabilityId}}/expand",
+        "description": "Doctor expands STREAM window (strict superset). Expect 200 with createdSlots for the newly added range only."
+      }
+    },
+    {
+      "name": "b) Valid WAVE expansion",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{doctorToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"date\": \"{{expandDate}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"13:00\",\n  \"capacity\": 8\n}"
+        },
+        "url": "{{baseUrl}}/doctor/availability/{{availabilityId}}/expand",
+        "description": "Doctor expands WAVE window; capacity from body (or proportional if omitted). Tokens unchanged."
+      }
+    },
+    {
+      "name": "c) Invalid expansion — shrink / bad params",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{doctorToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"date\": \"{{expandDate}}\",\n  \"startTime\": \"10:30\",\n  \"endTime\": \"11:00\"\n}"
+        },
+        "url": "{{baseUrl}}/doctor/availability/{{availabilityId}}/expand",
+        "description": "Expect 400 when new window is not a strict superset (inward shift / shrink)."
+      }
+    },
+    {
+      "name": "d) Unauthorized — patient attempting doctor expand",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{patientToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"date\": \"{{expandDate}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"13:00\"\n}"
+        },
+        "url": "{{baseUrl}}/doctor/availability/{{availabilityId}}/expand",
+        "description": "Expect 403 Forbidden when a PATIENT token calls the doctor-only expand route."
+      }
+    }
+  ]
+}

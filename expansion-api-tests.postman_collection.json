@@ -1,80 +1,1703 @@
 {
   "info": {
-    "name": "Schedula — Availability Expansion",
-    "description": "PATCH /doctor/availability/:id/expand test cases. Set baseUrl, doctorToken, patientToken, availabilityId, expandDate.",
+    "name": "Schedula — Availability Expansion (E2E Automated)",
+    "description": "Fully automated Collection Runner suite for PATCH /doctor/availability/:id/expand.\n\nPrerequisites:\n1. Set doctorEmail/doctorPassword/patientEmail/patientPassword to existing users with profiles.\n2. Run Collection Runner top-to-bottom (folder order 1→9).\n3. baseUrl default http://localhost:3000\n\nIdempotency: re-expanding an identical window returns 400 (codebase assertStrictSupersetExpansion).\n\nSlots verification uses GET /patient/appointments/slots?doctorId=&date=",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:3000" },
-    { "key": "doctorToken", "value": "" },
-    { "key": "patientToken", "value": "" },
-    { "key": "availabilityId", "value": "" },
-    { "key": "expandDate", "value": "2026-09-07" }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "doctorEmail",
+      "value": "availability.doctor@schedula.test"
+    },
+    {
+      "key": "doctorPassword",
+      "value": "secret12"
+    },
+    {
+      "key": "patientEmail",
+      "value": "patient@schedula.test"
+    },
+    {
+      "key": "patientPassword",
+      "value": "secret12"
+    },
+    {
+      "key": "doctorToken",
+      "value": ""
+    },
+    {
+      "key": "patientToken",
+      "value": ""
+    },
+    {
+      "key": "doctorId",
+      "value": ""
+    },
+    {
+      "key": "streamAvailabilityId",
+      "value": ""
+    },
+    {
+      "key": "waveAvailabilityId",
+      "value": ""
+    },
+    {
+      "key": "customOverrideId",
+      "value": ""
+    },
+    {
+      "key": "dateStreamEnd",
+      "value": "2026-09-14"
+    },
+    {
+      "key": "dateStreamStart",
+      "value": "2026-09-15"
+    },
+    {
+      "key": "dateStreamBoth",
+      "value": "2026-09-16"
+    },
+    {
+      "key": "dateCustomExpand",
+      "value": "2026-09-17"
+    },
+    {
+      "key": "dateDirection",
+      "value": "2026-09-18"
+    },
+    {
+      "key": "dateWaveExplicit",
+      "value": "2026-09-21"
+    },
+    {
+      "key": "dateWaveProp",
+      "value": "2026-09-22"
+    },
+    {
+      "key": "slotDuration",
+      "value": "15"
+    }
   ],
   "item": [
     {
-      "name": "a) Valid STREAM expansion",
-      "request": {
-        "method": "PATCH",
-        "header": [
-          { "key": "Content-Type", "value": "application/json" },
-          { "key": "Authorization", "value": "Bearer {{doctorToken}}" }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"date\": \"{{expandDate}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"13:00\",\n  \"slotDuration\": 15\n}"
+      "name": "1. Auth Setup",
+      "item": [
+        {
+          "name": "Login Doctor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{doctorEmail}}\",\n  \"password\": \"{{doctorPassword}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "pm.test(\"Doctor login 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"access_token present\", () => pm.expect(j.access_token).to.be.a(\"string\").and.not.empty);",
+                  "setVar(\"doctorToken\", j.access_token);"
+                ]
+              }
+            }
+          ]
         },
-        "url": "{{baseUrl}}/doctor/availability/{{availabilityId}}/expand",
-        "description": "Doctor expands STREAM window (strict superset). Expect 200 with createdSlots for the newly added range only."
-      }
+        {
+          "name": "Login Patient",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{patientEmail}}\",\n  \"password\": \"{{patientPassword}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "pm.test(\"Patient login 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"access_token present\", () => pm.expect(j.access_token).to.be.a(\"string\").and.not.empty);",
+                  "setVar(\"patientToken\", j.access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Doctor Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/profile",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "pm.test(\"Profile 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"doctor id\", () => pm.expect(j.id).to.be.a(\"string\"));",
+                  "setVar(\"doctorId\", j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Set STREAM schedule-config",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/schedule-config",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schedulingType\": \"STREAM\",\n  \"slotDuration\": 15,\n  \"bufferTime\": 0\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"STREAM config upserted\", () => pm.expect([200,201]).to.include(pm.response.code));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"schedulingType STREAM\", () => pm.expect(j.schedulingType).to.eql(\"STREAM\"));",
+                  "pm.test(\"slotDuration 15\", () => pm.expect(j.slotDuration).to.eql(15));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fixture — Custom override STREAM end (Mon 10-12)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/override",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{dateStreamEnd}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"isUnavailable\": false\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "pm.test(\"Override created\", () => pm.expect([200,201]).to.include(pm.response.code));",
+                  "const j = pm.response.json();",
+                  "setVar(\"streamAvailabilityId\", j.id);",
+                  "setVar(\"baselineStart\", String(j.startTime).slice(0,5));",
+                  "setVar(\"baselineEnd\", String(j.endTime).slice(0,5));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fixture — Custom override STREAM start (Tue 10-12)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/override",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{dateStreamStart}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"isUnavailable\": false\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "pm.test(\"Override created\", () => pm.expect([200,201]).to.include(pm.response.code));",
+                  "setVar(\"streamAvailStartId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fixture — Custom override STREAM both (Wed 10-12)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/override",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{dateStreamBoth}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"isUnavailable\": false\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "pm.test(\"Override created\", () => pm.expect([200,201]).to.include(pm.response.code));",
+                  "setVar(\"streamAvailBothId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fixture — Custom override for Custom-id success",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/override",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{dateCustomExpand}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"isUnavailable\": false\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "pm.test(\"Override created\", () => pm.expect([200,201]).to.include(pm.response.code));",
+                  "setVar(\"customOverrideId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fixture — Direction-rules baseline (never expanded)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/override",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"isUnavailable\": false\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "pm.test(\"Override created\", () => pm.expect([200,201]).to.include(pm.response.code));",
+                  "setVar(\"directionAvailabilityId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET list recurring",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "pm.test(\"List 200\", () => pm.response.to.have.status(200));",
+                  "const rows = pm.response.json();",
+                  "pm.expect(rows).to.be.an(\"array\");",
+                  "if (rows.length) { setVar(\"listedRecurringId\", rows[0].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fixture — Recurring MON 10-12 + 13-15 for overlap",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability",
+            "description": "Creates adjacent Monday windows. Expanding 10-12 to 10-14 overlaps 13-15 (409). dateStreamEnd is Monday 2026-09-14.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slots\": [\n    { \"dayOfWeek\": \"MONDAY\", \"startTime\": \"10:00\", \"endTime\": \"12:00\", \"slotDuration\": 15 },\n    { \"dayOfWeek\": \"MONDAY\", \"startTime\": \"13:00\", \"endTime\": \"15:00\", \"slotDuration\": 15 }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "const code = pm.response.code;",
+                  "if (code === 200 || code === 201) {",
+                  "  const rows = pm.response.json();",
+                  "  pm.test(\"Created recurring windows\", () => pm.expect(rows.length).to.be.at.least(1));",
+                  "  const early = rows.find(r => String(r.startTime).startsWith(\"10:00\"));",
+                  "  if (early) setVar(\"overlapExpandId\", early.id);",
+                  "} else {",
+                  "  pm.test(\"Recurring may already exist\", () => pm.expect([400,409]).to.include(code));",
+                  "  setVar(\"overlapExpandId\", pm.collectionVariables.get(\"listedRecurringId\") || \"\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Baseline slots — STREAM end date",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamEnd}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "function norm(t) { return String(t).slice(0, 5); }",
+                  "function toMin(t) { const p = norm(t).split(\":\").map(Number); return p[0]*60+p[1]; }",
+                  "function inRange(t, a, b) { const m = toMin(t); return m >= toMin(a) && m < toMin(b); }",
+                  "pm.test(\"Slots 200\", () => pm.response.to.have.status(200));",
+                  "const slots = pm.response.json();",
+                  "pm.test(\"STREAM slots array\", () => pm.expect(slots).to.be.an(\"array\"));",
+                  "const core = (slots || []).filter(s => inRange(s.startTime, \"10:00\", \"12:00\"));",
+                  "setVar(\"baselineSlotCountCore\", core.length);",
+                  "setVar(\"slotDuration\", 15);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     },
     {
-      "name": "b) Valid WAVE expansion",
-      "request": {
-        "method": "PATCH",
-        "header": [
-          { "key": "Content-Type", "value": "application/json" },
-          { "key": "Authorization", "value": "Bearer {{doctorToken}}" }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"date\": \"{{expandDate}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"13:00\",\n  \"capacity\": 8\n}"
+      "name": "2. STREAM Expansion",
+      "item": [
+        {
+          "name": "Capture baseline slots — end-extend date",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamEnd}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "function norm(t) { return String(t).slice(0, 5); }",
+                  "function toMin(t) { const p = norm(t).split(\":\").map(Number); return p[0]*60+p[1]; }",
+                  "function inRange(t, a, b) { const m = toMin(t); return m >= toMin(a) && m < toMin(b); }",
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));",
+                  "const slots = pm.response.json();",
+                  "setVar(\"preEndSnapshot\", JSON.stringify(slots.map(s => ({id:s.id,startTime:norm(s.startTime),endTime:norm(s.endTime),isBooked:s.isBooked}))));",
+                  "setVar(\"preEndCoreCount\", slots.filter(s => inRange(s.startTime,\"10:00\",\"12:00\")).length);"
+                ]
+              }
+            }
+          ]
         },
-        "url": "{{baseUrl}}/doctor/availability/{{availabilityId}}/expand",
-        "description": "Doctor expands WAVE window; capacity from body (or proportional if omitted). Tokens unchanged."
-      }
+        {
+          "name": "a) Extend end later 10:00-12:00 to 10:00-13:00",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/{{streamAvailabilityId}}/expand",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{dateStreamEnd}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"13:00\",\n  \"slotDuration\": 15\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"window 10:00-13:00\", () => { pm.expect(j.availability.startTime).to.eql(\"10:00\"); pm.expect(j.availability.endTime).to.eql(\"13:00\"); });",
+                  "pm.test(\"createdSlots == 4 (60min/15)\", () => pm.expect(j.createdSlots.length).to.eql(4));",
+                  "pm.test(\"created only in 12:00-13:00\", () => j.createdSlots.forEach(s => {",
+                  "  const st = String(s.startTime).slice(0,5);",
+                  "  pm.expect(st >= \"12:00\" && st < \"13:00\").to.be.true;",
+                  "}));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "a) Verify GET slots after end-extend",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamEnd}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "function norm(t) { return String(t).slice(0, 5); }",
+                  "function toMin(t) { const p = norm(t).split(\":\").map(Number); return p[0]*60+p[1]; }",
+                  "function inRange(t, a, b) { const m = toMin(t); return m >= toMin(a) && m < toMin(b); }",
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));",
+                  "const slots = pm.response.json();",
+                  "const pre = JSON.parse(pm.collectionVariables.get(\"preEndSnapshot\") || \"[]\");",
+                  "pm.test(\"all pre-existing slots still present unchanged\", () => {",
+                  "  pre.forEach(p => {",
+                  "    const found = slots.find(s => s.id === p.id);",
+                  "    pm.expect(found, \"missing id \"+p.id).to.exist;",
+                  "    pm.expect(norm(found.startTime)).to.eql(p.startTime);",
+                  "    pm.expect(norm(found.endTime)).to.eql(p.endTime);",
+                  "    pm.expect(found.isBooked).to.eql(p.isBooked);",
+                  "  });",
+                  "});",
+                  "const core = slots.filter(s => inRange(s.startTime,\"10:00\",\"12:00\"));",
+                  "pm.test(\"core count unchanged\", () => pm.expect(core.length).to.eql(Number(pm.collectionVariables.get(\"preEndCoreCount\"))));",
+                  "const suffix = slots.filter(s => inRange(s.startTime,\"12:00\",\"13:00\"));",
+                  "pm.test(\"suffix has 4 slots\", () => pm.expect(suffix.length).to.eql(4));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Capture baseline — start-extend date",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamStart}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "function norm(t) { return String(t).slice(0, 5); }",
+                  "function toMin(t) { const p = norm(t).split(\":\").map(Number); return p[0]*60+p[1]; }",
+                  "function inRange(t, a, b) { const m = toMin(t); return m >= toMin(a) && m < toMin(b); }",
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));",
+                  "const slots = pm.response.json();",
+                  "setVar(\"preStartSnapshot\", JSON.stringify(slots.map(s => ({id:s.id,startTime:norm(s.startTime),endTime:norm(s.endTime),isBooked:s.isBooked}))));",
+                  "setVar(\"preStartCoreCount\", slots.filter(s => inRange(s.startTime,\"10:00\",\"12:00\")).length);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "b) Extend start earlier 10:00-12:00 to 09:00-12:00",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/{{streamAvailStartId}}/expand",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{dateStreamStart}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"12:00\",\n  \"slotDuration\": 15\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"window 09:00-12:00\", () => { pm.expect(j.availability.startTime).to.eql(\"09:00\"); pm.expect(j.availability.endTime).to.eql(\"12:00\"); });",
+                  "pm.test(\"createdSlots == 4\", () => pm.expect(j.createdSlots.length).to.eql(4));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "b) Verify GET slots after start-extend",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamStart}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "function norm(t) { return String(t).slice(0, 5); }",
+                  "function toMin(t) { const p = norm(t).split(\":\").map(Number); return p[0]*60+p[1]; }",
+                  "function inRange(t, a, b) { const m = toMin(t); return m >= toMin(a) && m < toMin(b); }",
+                  "const slots = pm.response.json();",
+                  "const pre = JSON.parse(pm.collectionVariables.get(\"preStartSnapshot\") || \"[]\");",
+                  "pm.test(\"pre-existing intact\", () => pre.forEach(p => { const f = slots.find(s => s.id === p.id); pm.expect(f).to.exist; pm.expect(norm(f.startTime)).to.eql(p.startTime); }));",
+                  "pm.test(\"core unchanged\", () => pm.expect(slots.filter(s => inRange(s.startTime,\"10:00\",\"12:00\")).length).to.eql(Number(pm.collectionVariables.get(\"preStartCoreCount\"))));",
+                  "pm.test(\"prefix has 4\", () => pm.expect(slots.filter(s => inRange(s.startTime,\"09:00\",\"10:00\")).length).to.eql(4));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Capture baseline — both-extend date",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamBoth}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "function norm(t) { return String(t).slice(0, 5); }",
+                  "function toMin(t) { const p = norm(t).split(\":\").map(Number); return p[0]*60+p[1]; }",
+                  "function inRange(t, a, b) { const m = toMin(t); return m >= toMin(a) && m < toMin(b); }",
+                  "const slots = pm.response.json();",
+                  "setVar(\"preBothSnapshot\", JSON.stringify(slots.map(s => ({id:s.id,startTime:norm(s.startTime),endTime:norm(s.endTime),isBooked:s.isBooked}))));",
+                  "setVar(\"preBothCoreCount\", slots.filter(s => inRange(s.startTime,\"10:00\",\"12:00\")).length);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "c) Extend both 10:00-12:00 to 09:00-13:00",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/{{streamAvailBothId}}/expand",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{dateStreamBoth}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"13:00\",\n  \"slotDuration\": 15\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"window 09:00-13:00\", () => { pm.expect(j.availability.startTime).to.eql(\"09:00\"); pm.expect(j.availability.endTime).to.eql(\"13:00\"); });",
+                  "pm.test(\"createdSlots == 8\", () => pm.expect(j.createdSlots.length).to.eql(8));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "c) Verify GET slots after both-extend",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamBoth}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "function norm(t) { return String(t).slice(0, 5); }",
+                  "function toMin(t) { const p = norm(t).split(\":\").map(Number); return p[0]*60+p[1]; }",
+                  "function inRange(t, a, b) { const m = toMin(t); return m >= toMin(a) && m < toMin(b); }",
+                  "const slots = pm.response.json();",
+                  "const pre = JSON.parse(pm.collectionVariables.get(\"preBothSnapshot\") || \"[]\");",
+                  "pm.test(\"pre-existing intact\", () => pre.forEach(p => pm.expect(slots.find(s => s.id === p.id)).to.exist));",
+                  "pm.test(\"core unchanged\", () => pm.expect(slots.filter(s => inRange(s.startTime,\"10:00\",\"12:00\")).length).to.eql(Number(pm.collectionVariables.get(\"preBothCoreCount\"))));",
+                  "pm.test(\"prefix 4 and suffix 4\", () => {",
+                  "  pm.expect(slots.filter(s => inRange(s.startTime,\"09:00\",\"10:00\")).length).to.eql(4);",
+                  "  pm.expect(slots.filter(s => inRange(s.startTime,\"12:00\",\"13:00\")).length).to.eql(4);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     },
     {
-      "name": "c) Invalid expansion — shrink / bad params",
-      "request": {
-        "method": "PATCH",
-        "header": [
-          { "key": "Content-Type", "value": "application/json" },
-          { "key": "Authorization", "value": "Bearer {{doctorToken}}" }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"date\": \"{{expandDate}}\",\n  \"startTime\": \"10:30\",\n  \"endTime\": \"11:00\"\n}"
-        },
-        "url": "{{baseUrl}}/doctor/availability/{{availabilityId}}/expand",
-        "description": "Expect 400 when new window is not a strict superset (inward shift / shrink)."
-      }
+      "name": "3. STREAM Expansion — CustomAvailability id",
+      "item": [
+        {
+          "name": "Expand using customOverrideId",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/{{customOverrideId}}/expand",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{dateCustomExpand}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"13:00\",\n  \"slotDuration\": 15\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"kind custom\", () => pm.expect(j.availability.kind).to.eql(\"custom\"));",
+                  "pm.test(\"id matches override\", () => pm.expect(j.availability.id).to.eql(pm.collectionVariables.get(\"customOverrideId\")));",
+                  "pm.test(\"createdSlots 4\", () => pm.expect(j.createdSlots.length).to.eql(4));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     },
     {
-      "name": "d) Unauthorized — patient attempting doctor expand",
-      "request": {
-        "method": "PATCH",
-        "header": [
-          { "key": "Content-Type", "value": "application/json" },
-          { "key": "Authorization", "value": "Bearer {{patientToken}}" }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"date\": \"{{expandDate}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"13:00\"\n}"
+      "name": "4. WAVE Expansion",
+      "item": [
+        {
+          "name": "Set WAVE schedule-config (maxCapacity 5)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/schedule-config",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schedulingType\": \"WAVE\",\n  \"maxCapacity\": 5\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "pm.test(\"WAVE config\", () => pm.expect(pm.response.json().schedulingType).to.eql(\"WAVE\"));",
+                  "setVar(\"waveOldCapacity\", pm.response.json().maxCapacity);"
+                ]
+              }
+            }
+          ]
         },
-        "url": "{{baseUrl}}/doctor/availability/{{availabilityId}}/expand",
-        "description": "Expect 403 Forbidden when a PATIENT token calls the doctor-only expand route."
-      }
+        {
+          "name": "Fixture — WAVE window explicit capacity",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/override",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{dateWaveExplicit}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"isUnavailable\": false\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "pm.test(\"created\", () => pm.expect([200,201]).to.include(pm.response.code));",
+                  "setVar(\"waveAvailabilityId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Capture WAVE appointments before expand",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/appointments",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));",
+                  "const rows = pm.response.json();",
+                  "const date = pm.collectionVariables.get(\"dateWaveExplicit\");",
+                  "const wave = rows.filter(a => a.appointmentType === \"WAVE\" && String(a.appointmentDate || a.date).slice(0,10) === date);",
+                  "setVar(\"waveApptsBefore\", JSON.stringify(wave.map(a => ({id:a.id,tokenNumber:a.tokenNumber,patientId:a.patientId,status:a.status}))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "a) WAVE expand with explicit capacity",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/{{waveAvailabilityId}}/expand",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{dateWaveExplicit}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"13:00\",\n  \"capacity\": 8\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"capacity == 8\", () => pm.expect(j.maxCapacity).to.eql(8));",
+                  "pm.test(\"WAVE type\", () => pm.expect(j.schedulingType).to.eql(\"WAVE\"));",
+                  "pm.test(\"createdSlots empty\", () => pm.expect(j.createdSlots).to.eql([]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reset WAVE capacity to 4 for proportional test",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/schedule-config",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schedulingType\": \"WAVE\",\n  \"maxCapacity\": 4\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "setVar(\"waveOldCapacity\", 4);",
+                  "pm.test(\"maxCapacity 4\", () => pm.expect(pm.response.json().maxCapacity).to.eql(4));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fixture — WAVE window proportional",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/override",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{dateWaveProp}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"isUnavailable\": false\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "setVar(\"wavePropAvailabilityId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "b) WAVE expand capacity omitted (proportional)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/{{wavePropAvailabilityId}}/expand",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{dateWaveProp}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"14:00\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "const oldCap = Number(pm.collectionVariables.get(\"waveOldCapacity\") || 4);",
+                  "const oldDur = 120;",
+                  "const newDur = 240;",
+                  "const expected = Math.ceil(oldCap * (newDur / oldDur));",
+                  "setVar(\"expectedWavePropCapacity\", expected);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "const expected = Number(pm.collectionVariables.get(\"expectedWavePropCapacity\"));",
+                  "pm.test(\"capacity == ceil(old*newDur/oldDur)\", () => pm.expect(j.maxCapacity).to.eql(expected));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "c) Follow-up GET appointments — tokens unchanged",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/appointments",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function setVar(k, v) {",
+                  "  const s = v === undefined || v === null ? \"\" : String(v);",
+                  "  pm.collectionVariables.set(k, s);",
+                  "  try { pm.environment.set(k, s); } catch (e) {}",
+                  "}",
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));",
+                  "const before = JSON.parse(pm.collectionVariables.get(\"waveApptsBefore\") || \"[]\");",
+                  "const rows = pm.response.json();",
+                  "pm.test(\"prior WAVE appointments unchanged\", () => {",
+                  "  before.forEach(b => {",
+                  "    const found = rows.find(a => a.id === b.id);",
+                  "    pm.expect(found, \"missing appt \"+b.id).to.exist;",
+                  "    pm.expect(found.tokenNumber).to.eql(b.tokenNumber);",
+                  "    pm.expect(found.patientId).to.eql(b.patientId);",
+                  "    pm.expect(found.status).to.eql(b.status);",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Direction Rules (expect 400)",
+      "item": [
+        {
+          "name": "Shrink inward 10:30-11:30",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"10:30\",\n  \"endTime\": \"11:30\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Shift window 11:00-13:00 (start inward)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"11:00\",\n  \"endTime\": \"13:00\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Shift other way 09:00-11:00 (end inward)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"11:00\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid time format 25:00",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"25:00\",\n  \"endTime\": \"13:00\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Missing required fields",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Malformed / past date",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2020-01-06\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"13:00\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Overlap Conflict (expect 409)",
+      "item": [
+        {
+          "name": "Expand into peer window → 409",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/{{overlapExpandId}}/expand",
+            "description": "Monday recurring 10-12 expanding to 10-14 overlaps peer 13-15. dateStreamEnd=2026-09-14 is Monday. Expect 409.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{dateStreamEnd}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"14:00\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"409 Conflict\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Entity Not Found (expect 404)",
+      "item": [
+        {
+          "name": "Nonexistent UUID",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/00000000-0000-4000-8000-000000000099/expand",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"13:00\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8. Role-Based Protection & Security",
+      "item": [
+        {
+          "name": "Patient token → 403",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patientToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"13:00\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "No Authorization → 401",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"13:00\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Malformed token → 401",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer not.a.jwt"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"13:00\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "9. Idempotency Check",
+      "item": [
+        {
+          "name": "Re-send identical successful expansion → 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/doctor/availability/{{streamAvailabilityId}}/expand",
+            "description": "Codebase rejects identical window with 400 (assertStrictSupersetExpansion). Does not create duplicate slots.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{dateStreamEnd}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"13:00\",\n  \"slotDuration\": 15\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 identical expansion rejected\", () => pm.response.to.have.status(400));",
+                  "const msg = JSON.stringify(pm.response.json()).toLowerCase();",
+                  "pm.test(\"mentions identical or expansion\", () => pm.expect(msg).to.match(/identical|expansion/));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm no duplicate slots after rejected re-expand",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamEnd}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function norm(t) { return String(t).slice(0, 5); }",
+                  "function toMin(t) { const p = norm(t).split(\":\").map(Number); return p[0]*60+p[1]; }",
+                  "function inRange(t, a, b) { const m = toMin(t); return m >= toMin(a) && m < toMin(b); }",
+                  "const slots = pm.response.json();",
+                  "pm.test(\"unique ids\", () => pm.expect(new Set(slots.map(s => s.id)).size).to.eql(slots.length));",
+                  "pm.test(\"10:00-13:00 still has 12 slots\", () => pm.expect(slots.length).to.eql(12));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "7f3c2a91-4b8e-4d2a-9c1f-6e5d4b3a2910",
     "name": "Schedula Availability Expansion E2E",
-    "description": "Fully automated Collection Runner suite for PATCH /doctor/availability/:id/expand.\n\nPrerequisites:\n1. Set doctorEmail/doctorPassword/patientEmail/patientPassword to existing users with profiles.\n2. Run Collection Runner top-to-bottom (folder order 1->9).\n3. baseUrl default http://localhost:3000\n\nIdempotency: re-expanding an identical window returns 400 (codebase assertStrictSupersetExpansion).\n\nSlots verification uses GET /patient/appointments/slots?doctorId=&date=",
+    "description": "Automated tests for PATCH /doctor/availability/:id/expand. Set doctorEmail/patientEmail passwords, then run Collection Runner top to bottom.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -19,11 +19,24 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{baseUrl}}/auth/login",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{doctorEmail}}\",\n  \"password\": \"{{doctorPassword}}\"\n}"
+              "raw": "{\n  \"email\": \"{{doctorEmail}}\",\n  \"password\": \"{{doctorPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -56,11 +69,24 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{baseUrl}}/auth/login",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{patientEmail}}\",\n  \"password\": \"{{patientPassword}}\"\n}"
+              "raw": "{\n  \"email\": \"{{patientEmail}}\",\n  \"password\": \"{{patientPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -97,8 +123,16 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/profile",
-            "description": ""
+            "url": {
+              "raw": "{{baseUrl}}/doctor/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "profile"
+              ]
+            }
           },
           "event": [
             {
@@ -134,11 +168,24 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/schedule-config",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/schedule-config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "schedule-config"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"schedulingType\": \"STREAM\",\n  \"slotDuration\": 15,\n  \"bufferTime\": 0\n}"
+              "raw": "{\n  \"schedulingType\": \"STREAM\",\n  \"slotDuration\": 15,\n  \"bufferTime\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -170,11 +217,25 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/override",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/override",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "override"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{dateStreamEnd}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"isUnavailable\": false\n}"
+              "raw": "{\n  \"date\": \"{{dateStreamEnd}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"isUnavailable\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -212,11 +273,25 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/override",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/override",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "override"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{dateStreamStart}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"isUnavailable\": false\n}"
+              "raw": "{\n  \"date\": \"{{dateStreamStart}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"isUnavailable\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -251,11 +326,25 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/override",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/override",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "override"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{dateStreamBoth}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"isUnavailable\": false\n}"
+              "raw": "{\n  \"date\": \"{{dateStreamBoth}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"isUnavailable\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -290,11 +379,25 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/override",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/override",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "override"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{dateCustomExpand}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"isUnavailable\": false\n}"
+              "raw": "{\n  \"date\": \"{{dateCustomExpand}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"isUnavailable\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -329,11 +432,25 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/override",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/override",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "override"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"isUnavailable\": false\n}"
+              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"isUnavailable\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -368,8 +485,16 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability",
-            "description": ""
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability"
+              ]
+            }
           },
           "event": [
             {
@@ -405,11 +530,25 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability"
+              ]
+            },
             "description": "Creates adjacent Monday windows. Expanding 10-12 to 10-14 overlaps 13-15 (409). dateStreamEnd is Monday 2026-09-14.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"slots\": [\n    { \"dayOfWeek\": \"MONDAY\", \"startTime\": \"10:00\", \"endTime\": \"12:00\", \"slotDuration\": 15 },\n    { \"dayOfWeek\": \"MONDAY\", \"startTime\": \"13:00\", \"endTime\": \"15:00\", \"slotDuration\": 15 }\n  ]\n}"
+              "raw": "{\n  \"slots\": [\n    { \"dayOfWeek\": \"MONDAY\", \"startTime\": \"10:00\", \"endTime\": \"12:00\", \"slotDuration\": 15 },\n    { \"dayOfWeek\": \"MONDAY\", \"startTime\": \"13:00\", \"endTime\": \"15:00\", \"slotDuration\": 15 }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -443,8 +582,27 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamEnd}}",
-            "description": ""
+            "url": {
+              "raw": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamEnd}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patient",
+                "appointments",
+                "slots"
+              ],
+              "query": [
+                {
+                  "key": "doctorId",
+                  "value": "{{doctorId}}"
+                },
+                {
+                  "key": "date",
+                  "value": "{{dateStreamEnd}}"
+                }
+              ]
+            }
           },
           "event": [
             {
@@ -481,8 +639,27 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamEnd}}",
-            "description": ""
+            "url": {
+              "raw": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamEnd}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patient",
+                "appointments",
+                "slots"
+              ],
+              "query": [
+                {
+                  "key": "doctorId",
+                  "value": "{{doctorId}}"
+                },
+                {
+                  "key": "date",
+                  "value": "{{dateStreamEnd}}"
+                }
+              ]
+            }
           },
           "event": [
             {
@@ -521,11 +698,26 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/{{streamAvailabilityId}}/expand",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/{{streamAvailabilityId}}/expand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "{{streamAvailabilityId}}",
+                "expand"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{dateStreamEnd}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"13:00\",\n  \"slotDuration\": 15\n}"
+              "raw": "{\n  \"date\": \"{{dateStreamEnd}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"13:00\",\n  \"slotDuration\": 15\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -557,8 +749,27 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamEnd}}",
-            "description": ""
+            "url": {
+              "raw": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamEnd}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patient",
+                "appointments",
+                "slots"
+              ],
+              "query": [
+                {
+                  "key": "doctorId",
+                  "value": "{{doctorId}}"
+                },
+                {
+                  "key": "date",
+                  "value": "{{dateStreamEnd}}"
+                }
+              ]
+            }
           },
           "event": [
             {
@@ -600,8 +811,27 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamStart}}",
-            "description": ""
+            "url": {
+              "raw": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamStart}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patient",
+                "appointments",
+                "slots"
+              ],
+              "query": [
+                {
+                  "key": "doctorId",
+                  "value": "{{doctorId}}"
+                },
+                {
+                  "key": "date",
+                  "value": "{{dateStreamStart}}"
+                }
+              ]
+            }
           },
           "event": [
             {
@@ -640,11 +870,26 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/{{streamAvailStartId}}/expand",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/{{streamAvailStartId}}/expand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "{{streamAvailStartId}}",
+                "expand"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{dateStreamStart}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"12:00\",\n  \"slotDuration\": 15\n}"
+              "raw": "{\n  \"date\": \"{{dateStreamStart}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"12:00\",\n  \"slotDuration\": 15\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -667,8 +912,27 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamStart}}",
-            "description": ""
+            "url": {
+              "raw": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamStart}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patient",
+                "appointments",
+                "slots"
+              ],
+              "query": [
+                {
+                  "key": "doctorId",
+                  "value": "{{doctorId}}"
+                },
+                {
+                  "key": "date",
+                  "value": "{{dateStreamStart}}"
+                }
+              ]
+            }
           },
           "event": [
             {
@@ -699,8 +963,27 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamBoth}}",
-            "description": ""
+            "url": {
+              "raw": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamBoth}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patient",
+                "appointments",
+                "slots"
+              ],
+              "query": [
+                {
+                  "key": "doctorId",
+                  "value": "{{doctorId}}"
+                },
+                {
+                  "key": "date",
+                  "value": "{{dateStreamBoth}}"
+                }
+              ]
+            }
           },
           "event": [
             {
@@ -738,11 +1021,26 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/{{streamAvailBothId}}/expand",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/{{streamAvailBothId}}/expand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "{{streamAvailBothId}}",
+                "expand"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{dateStreamBoth}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"13:00\",\n  \"slotDuration\": 15\n}"
+              "raw": "{\n  \"date\": \"{{dateStreamBoth}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"13:00\",\n  \"slotDuration\": 15\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -765,8 +1063,27 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamBoth}}",
-            "description": ""
+            "url": {
+              "raw": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamBoth}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patient",
+                "appointments",
+                "slots"
+              ],
+              "query": [
+                {
+                  "key": "doctorId",
+                  "value": "{{doctorId}}"
+                },
+                {
+                  "key": "date",
+                  "value": "{{dateStreamBoth}}"
+                }
+              ]
+            }
           },
           "event": [
             {
@@ -814,11 +1131,26 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/{{customOverrideId}}/expand",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/{{customOverrideId}}/expand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "{{customOverrideId}}",
+                "expand"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{dateCustomExpand}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"13:00\",\n  \"slotDuration\": 15\n}"
+              "raw": "{\n  \"date\": \"{{dateCustomExpand}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"13:00\",\n  \"slotDuration\": 15\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -856,11 +1188,24 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/schedule-config",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/schedule-config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "schedule-config"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"schedulingType\": \"WAVE\",\n  \"maxCapacity\": 5\n}"
+              "raw": "{\n  \"schedulingType\": \"WAVE\",\n  \"maxCapacity\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -895,11 +1240,25 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/override",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/override",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "override"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{dateWaveExplicit}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"isUnavailable\": false\n}"
+              "raw": "{\n  \"date\": \"{{dateWaveExplicit}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"isUnavailable\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -934,8 +1293,16 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/appointments",
-            "description": ""
+            "url": {
+              "raw": "{{baseUrl}}/doctor/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "appointments"
+              ]
+            }
           },
           "event": [
             {
@@ -972,11 +1339,26 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/{{waveAvailabilityId}}/expand",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/{{waveAvailabilityId}}/expand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "{{waveAvailabilityId}}",
+                "expand"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{dateWaveExplicit}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"13:00\",\n  \"capacity\": 8\n}"
+              "raw": "{\n  \"date\": \"{{dateWaveExplicit}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"13:00\",\n  \"capacity\": 8\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -1009,11 +1391,24 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/schedule-config",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/schedule-config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "schedule-config"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"schedulingType\": \"WAVE\",\n  \"maxCapacity\": 4\n}"
+              "raw": "{\n  \"schedulingType\": \"WAVE\",\n  \"maxCapacity\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -1048,11 +1443,25 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/override",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/override",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "override"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{dateWaveProp}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"isUnavailable\": false\n}"
+              "raw": "{\n  \"date\": \"{{dateWaveProp}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"isUnavailable\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -1086,11 +1495,26 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/{{wavePropAvailabilityId}}/expand",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/{{wavePropAvailabilityId}}/expand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "{{wavePropAvailabilityId}}",
+                "expand"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{dateWaveProp}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"14:00\"\n}"
+              "raw": "{\n  \"date\": \"{{dateWaveProp}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"14:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -1145,8 +1569,16 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/appointments",
-            "description": ""
+            "url": {
+              "raw": "{{baseUrl}}/doctor/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "appointments"
+              ]
+            }
           },
           "event": [
             {
@@ -1195,11 +1627,26 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "{{directionAvailabilityId}}",
+                "expand"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"10:30\",\n  \"endTime\": \"11:30\"\n}"
+              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"10:30\",\n  \"endTime\": \"11:30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -1228,11 +1675,26 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "{{directionAvailabilityId}}",
+                "expand"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"11:00\",\n  \"endTime\": \"13:00\"\n}"
+              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"11:00\",\n  \"endTime\": \"13:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -1261,11 +1723,26 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "{{directionAvailabilityId}}",
+                "expand"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"11:00\"\n}"
+              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"11:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -1294,11 +1771,26 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "{{directionAvailabilityId}}",
+                "expand"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"25:00\",\n  \"endTime\": \"13:00\"\n}"
+              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"25:00\",\n  \"endTime\": \"13:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -1327,11 +1819,26 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "{{directionAvailabilityId}}",
+                "expand"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{}"
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -1360,11 +1867,26 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "{{directionAvailabilityId}}",
+                "expand"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"2020-01-06\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"13:00\"\n}"
+              "raw": "{\n  \"date\": \"2020-01-06\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"13:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -1398,11 +1920,27 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/{{overlapExpandId}}/expand",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/{{overlapExpandId}}/expand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "{{overlapExpandId}}",
+                "expand"
+              ]
+            },
             "description": "Monday recurring 10-12 expanding to 10-14 overlaps peer 13-15. dateStreamEnd=2026-09-14 is Monday. Expect 409.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{dateStreamEnd}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"14:00\"\n}"
+              "raw": "{\n  \"date\": \"{{dateStreamEnd}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"14:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -1436,11 +1974,26 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/00000000-0000-4000-8000-000000000099/expand",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/00000000-0000-4000-8000-000000000099/expand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "00000000-0000-4000-8000-000000000099",
+                "expand"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"13:00\"\n}"
+              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"13:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -1474,11 +2027,26 @@
                 "value": "Bearer {{patientToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "{{directionAvailabilityId}}",
+                "expand"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"13:00\"\n}"
+              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"13:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -1503,11 +2071,26 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "{{directionAvailabilityId}}",
+                "expand"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"13:00\"\n}"
+              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"13:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -1536,11 +2119,26 @@
                 "value": "Bearer not.a.jwt"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
-            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/{{directionAvailabilityId}}/expand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "{{directionAvailabilityId}}",
+                "expand"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"13:00\"\n}"
+              "raw": "{\n  \"date\": \"{{dateDirection}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"13:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -1574,11 +2172,27 @@
                 "value": "Bearer {{doctorToken}}"
               }
             ],
-            "url": "{{baseUrl}}/doctor/availability/{{streamAvailabilityId}}/expand",
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/{{streamAvailabilityId}}/expand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "doctor",
+                "availability",
+                "{{streamAvailabilityId}}",
+                "expand"
+              ]
+            },
             "description": "Codebase rejects identical window with 400 (assertStrictSupersetExpansion). Does not create duplicate slots.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{dateStreamEnd}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"13:00\",\n  \"slotDuration\": 15\n}"
+              "raw": "{\n  \"date\": \"{{dateStreamEnd}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"13:00\",\n  \"slotDuration\": 15\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -1600,8 +2214,27 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamEnd}}",
-            "description": ""
+            "url": {
+              "raw": "{{baseUrl}}/patient/appointments/slots?doctorId={{doctorId}}&date={{dateStreamEnd}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patient",
+                "appointments",
+                "slots"
+              ],
+              "query": [
+                {
+                  "key": "doctorId",
+                  "value": "{{doctorId}}"
+                },
+                {
+                  "key": "date",
+                  "value": "{{dateStreamEnd}}"
+                }
+              ]
+            }
           },
           "event": [
             {

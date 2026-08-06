@@ -121,4 +121,68 @@ export class AvailabilityValidationService {
     this.assertNoDuplicate(candidate, existing, contextLabel);
     this.assertNoOverlap(candidate, existing, contextLabel);
   }
+
+  /**
+   * Expansion must be a strict superset of the current window:
+   * newStart <= currentStart AND newEnd >= currentEnd,
+   * and at least one bound must actually move outward.
+   */
+  assertStrictSupersetExpansion(
+    current: TimeWindow,
+    proposed: TimeWindow,
+  ): void {
+    const curStart = this.toMinutes(this.normalizeTime(current.startTime));
+    const curEnd = this.toMinutes(this.normalizeTime(current.endTime));
+    const newStart = this.toMinutes(this.normalizeTime(proposed.startTime));
+    const newEnd = this.toMinutes(this.normalizeTime(proposed.endTime));
+
+    this.assertValidTimeRange(
+      this.normalizeTime(proposed.startTime),
+      this.normalizeTime(proposed.endTime),
+    );
+
+    if (newStart > curStart || newEnd < curEnd) {
+      throw new BadRequestException(
+        `Invalid expansion: new window (${this.normalizeTime(proposed.startTime)}–${this.normalizeTime(proposed.endTime)}) must fully contain the current window (${this.normalizeTime(current.startTime)}–${this.normalizeTime(current.endTime)}); shrinking or shifting inward is not allowed`,
+      );
+    }
+
+    if (newStart === curStart && newEnd === curEnd) {
+      throw new BadRequestException(
+        'Invalid expansion: proposed window is identical to the current window; extend start earlier and/or end later',
+      );
+    }
+  }
+
+  /** Added prefix/suffix ranges relative to the original window (may be empty). */
+  expansionDeltas(
+    current: TimeWindow,
+    proposed: TimeWindow,
+  ): TimeWindow[] {
+    const curStart = this.toMinutes(this.normalizeTime(current.startTime));
+    const curEnd = this.toMinutes(this.normalizeTime(current.endTime));
+    const newStart = this.toMinutes(this.normalizeTime(proposed.startTime));
+    const newEnd = this.toMinutes(this.normalizeTime(proposed.endTime));
+    const deltas: TimeWindow[] = [];
+
+    const minutesToTime = (total: number): string => {
+      const h = Math.floor(total / 60);
+      const m = total % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    };
+
+    if (newStart < curStart) {
+      deltas.push({
+        startTime: minutesToTime(newStart),
+        endTime: minutesToTime(curStart),
+      });
+    }
+    if (newEnd > curEnd) {
+      deltas.push({
+        startTime: minutesToTime(curEnd),
+        endTime: minutesToTime(newEnd),
+      });
+    }
+    return deltas;
+  }
 }

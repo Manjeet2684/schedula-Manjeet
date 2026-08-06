@@ -113,3 +113,39 @@ export class EffectiveDateQueryDto {
   })
   date!: string;
 }
+
+/** Expand an existing availability window (strict superset) for a target date. */
+export class ExpandAvailabilityDto {
+  @IsString()
+  @IsNotEmpty()
+  @Matches(DATE_YYYY_MM_DD, {
+    message: 'date must be a valid calendar date in YYYY-MM-DD format',
+  })
+  date!: string;
+
+  @IsString()
+  @Matches(TIME_HH_MM, {
+    message: 'startTime must be in HH:mm format (00:00–23:59)',
+  })
+  startTime!: string;
+
+  @IsString()
+  @Matches(TIME_HH_MM, {
+    message: 'endTime must be in HH:mm format (00:00–23:59)',
+  })
+  endTime!: string;
+
+  /** STREAM: optional override for newly generated slots. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'slotDuration must be an integer' })
+  @Min(1, { message: 'slotDuration must be greater than 0' })
+  slotDuration?: number;
+
+  /** WAVE: optional explicit maxCapacity; otherwise scaled proportionally. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'capacity must be an integer' })
+  @Min(1, { message: 'capacity must be greater than 0' })
+  capacity?: number;
+}

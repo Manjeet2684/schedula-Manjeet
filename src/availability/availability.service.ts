@@ -5,12 +5,18 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Not, Repository } from 'typeorm';
+import { DataSource, EntityManager, Not, Repository } from 'typeorm';
 import { Doctor } from '../doctor/doctor.entity';
+import {
+  DoctorScheduleConfig,
+  SchedulingType,
+} from '../scheduling/entities/doctor-schedule-config.entity';
+import { Slot } from '../slots/slot.entity';
 import { AvailabilityValidationService } from './availability-validation.service';
 import {
   CreateCustomAvailabilityDto,
   CreateRecurringAvailabilityDto,
+  ExpandAvailabilityDto,
   UpdateRecurringAvailabilityDto,
 } from './dto/availability.dto';
 import { CustomAvailability } from './entities/custom-availability.entity';
@@ -29,6 +35,10 @@ const JS_DAY_TO_ENUM: DayOfWeek[] = [
   DayOfWeek.SATURDAY,
 ];
 
+type AvailabilityTarget =
+  | { kind: 'recurring'; row: RecurringAvailability }
+  | { kind: 'custom'; row: CustomAvailability };
+
 @Injectable()
 export class AvailabilityService {
   constructor(
@@ -39,6 +49,7 @@ export class AvailabilityService {
     @InjectRepository(Doctor)
     private readonly doctorRepo: Repository<Doctor>,
     private readonly validation: AvailabilityValidationService,
+    private readonly dataSource: DataSource,
   ) {}
 
   private async requireDoctor(userId: string): Promise<Doctor> {
@@ -89,6 +100,32 @@ export class AvailabilityService {
       );
     }
     return parsed;
+  }
+
+  private fromDbTime(time: string): string {
+    return this.validation.normalizeTime(String(time).slice(0, 5));
+  }
+
+  /** Same STREAM algorithm as SchedulingService.generateStreamSlots (duration + buffer). */
+  private generateSlotsInWindow(
+    startTime: string,
+    endTime: string,
+    slotDuration: number,
+    bufferTime: number,
+  ): Array<{ startTime: string; endTime: string }> {
+    const slots: Array<{ startTime: string; endTime: string }> = [];
+    let cursor = this.validation.toMinutes(startTime);
+    const windowEnd = this.validation.toMinutes(endTime);
+
+    while (cursor + slotDuration <= windowEnd) {
+      const endTotal = cursor + slotDuration;
+      slots.push({
+        startTime: `${String(Math.floor(cursor / 60)).padStart(2, '0')}:${String(cursor % 60).padStart(2, '0')}`,
+        endTime: `${String(Math.floor(endTotal / 60)).padStart(2, '0')}:${String(endTotal % 60).padStart(2, '0')}`,
+      });
+      cursor += slotDuration + bufferTime;
+    }
+    return slots;
   }
 
   async createRecurring(
@@ -248,6 +285,247 @@ export class AvailabilityService {
     return this.recurringRepo.find({
       where: { doctorId: doctor.id, dayOfWeek },
       order: { startTime: 'ASC' },
+    });
+  }
+
+  private async resolveOwnedAvailability(
+    manager: EntityManager,
+    doctor: Doctor,
+    id: string,
+  ): Promise<AvailabilityTarget> {
+    const recurring = await manager.findOne(RecurringAvailability, {
+      where: { id },
+    });
+    if (recurring) {
+      if (recurring.doctorId !== doctor.id) {
+        throw new ForbiddenException(
+          "You cannot modify another doctor's availability slot",
+        );
+      }
+      return { kind: 'recurring', row: recurring };
+    }
+
+    const custom = await manager.findOne(CustomAvailability, {
+      where: { id },
+    });
+    if (custom) {
+      if (custom.doctorId !== doctor.id) {
+        throw new ForbiddenException(
+          "You cannot modify another doctor's availability slot",
+        );
+      }
+      return { kind: 'custom', row: custom };
+    }
+
+    throw new NotFoundException(`Availability slot ${id} not found`);
+  }
+
+  /**
+   * Expand availability window (strict superset) and materialize STREAM deltas
+   * or scale WAVE capacity inside one transaction.
+   */
+  async expand(userId: string, id: string, dto: ExpandAvailabilityDto) {
+    const doctor = await this.requireDoctor(userId);
+    this.parseCalendarDate(dto.date);
+    this.validation.assertValidOverrideDate(dto.date);
+
+    const newStart = this.validation.normalizeTime(dto.startTime);
+    const newEnd = this.validation.normalizeTime(dto.endTime);
+
+    return this.dataSource.transaction(async (manager) => {
+      const target = await this.resolveOwnedAvailability(manager, doctor, id);
+      const currentStart = this.fromDbTime(String(target.row.startTime));
+      const currentEnd = this.fromDbTime(String(target.row.endTime));
+
+      this.validation.assertStrictSupersetExpansion(
+        { startTime: currentStart, endTime: currentEnd },
+        { startTime: newStart, endTime: newEnd },
+      );
+
+      if (target.kind === 'custom' && target.row.isUnavailable) {
+        throw new BadRequestException(
+          'Cannot expand an unavailable (blocked) override; clear the block first',
+        );
+      }
+
+      if (target.kind === 'custom') {
+        const customDate =
+          typeof target.row.date === 'string'
+            ? target.row.date.slice(0, 10)
+            : String(target.row.date).slice(0, 10);
+        if (customDate !== dto.date) {
+          throw new BadRequestException(
+            `Expand date ${dto.date} does not match override date ${customDate}`,
+          );
+        }
+      } else {
+        const weekday =
+          JS_DAY_TO_ENUM[this.parseCalendarDate(dto.date).getDay()];
+        if (target.row.dayOfWeek !== weekday) {
+          throw new BadRequestException(
+            `Expand date ${dto.date} is ${weekday}, but recurring availability is for ${target.row.dayOfWeek}`,
+          );
+        }
+      }
+
+      let peers: Array<{ startTime: string; endTime: string }> = [];
+      if (target.kind === 'recurring') {
+        const rows = await manager.find(RecurringAvailability, {
+          where: {
+            doctorId: doctor.id,
+            dayOfWeek: target.row.dayOfWeek,
+            id: Not(target.row.id),
+          },
+        });
+        peers = rows.map((r) => ({
+          startTime: this.fromDbTime(String(r.startTime)),
+          endTime: this.fromDbTime(String(r.endTime)),
+        }));
+      } else {
+        const rows = await manager.find(CustomAvailability, {
+          where: {
+            doctorId: doctor.id,
+            date: dto.date,
+            id: Not(target.row.id),
+          },
+        });
+        peers = rows
+          .filter((r) => !r.isUnavailable)
+          .map((r) => ({
+            startTime: this.fromDbTime(String(r.startTime)),
+            endTime: this.fromDbTime(String(r.endTime)),
+          }));
+      }
+
+      this.validation.validateWindowAgainstExisting(
+        { startTime: newStart, endTime: newEnd },
+        peers,
+        target.kind === 'recurring'
+          ? `${target.row.dayOfWeek}`
+          : `date ${dto.date}`,
+      );
+
+      target.row.startTime = newStart;
+      target.row.endTime = newEnd;
+      if (target.kind === 'recurring' && dto.slotDuration !== undefined) {
+        target.row.slotDuration = dto.slotDuration;
+      }
+      await manager.save(target.row);
+
+      const config = await manager.findOne(DoctorScheduleConfig, {
+        where: { doctorId: doctor.id },
+      });
+      if (!config) {
+        throw new NotFoundException(
+          'No schedule configuration found for this doctor. Set one via POST /doctor/schedule-config.',
+        );
+      }
+
+      const deltas = this.validation.expansionDeltas(
+        { startTime: currentStart, endTime: currentEnd },
+        { startTime: newStart, endTime: newEnd },
+      );
+
+      const createdSlots: Slot[] = [];
+      let maxCapacity: number | null = config.maxCapacity ?? null;
+
+      if (config.schedulingType === SchedulingType.STREAM) {
+        const slotDuration =
+          dto.slotDuration ??
+          (target.kind === 'recurring'
+            ? (target.row.slotDuration ?? undefined)
+            : undefined) ??
+          config.slotDuration ??
+          undefined;
+        if (!slotDuration || slotDuration <= 0) {
+          throw new BadRequestException(
+            'slotDuration is required for STREAM expansion (provide in body or schedule config)',
+          );
+        }
+        const bufferTime = config.bufferTime ?? 0;
+
+        for (const delta of deltas) {
+          const generated = this.generateSlotsInWindow(
+            delta.startTime,
+            delta.endTime,
+            slotDuration,
+            bufferTime,
+          );
+          for (const g of generated) {
+            let slot = await manager.findOne(Slot, {
+              where: {
+                doctorId: doctor.id,
+                date: dto.date,
+                startTime: g.startTime,
+                endTime: g.endTime,
+              },
+            });
+            if (!slot) {
+              slot = manager.create(Slot, {
+                doctorId: doctor.id,
+                date: dto.date,
+                startTime: g.startTime,
+                endTime: g.endTime,
+                isBooked: false,
+              });
+              slot = await manager.save(slot);
+              createdSlots.push(slot);
+            }
+          }
+        }
+      } else {
+        const oldCap = config.maxCapacity ?? 0;
+        if (oldCap <= 0 && dto.capacity === undefined) {
+          throw new BadRequestException(
+            'WAVE maxCapacity is not set; provide capacity in the expand payload',
+          );
+        }
+        const oldDuration =
+          this.validation.toMinutes(currentEnd) -
+          this.validation.toMinutes(currentStart);
+        const newDuration =
+          this.validation.toMinutes(newEnd) -
+          this.validation.toMinutes(newStart);
+
+        if (dto.capacity !== undefined) {
+          maxCapacity = dto.capacity;
+        } else {
+          maxCapacity = Math.ceil(oldCap * (newDuration / oldDuration));
+        }
+        if (maxCapacity < oldCap) {
+          throw new BadRequestException(
+            `WAVE capacity cannot shrink on expansion (current ${oldCap}, proposed ${maxCapacity})`,
+          );
+        }
+        config.maxCapacity = maxCapacity;
+        await manager.save(config);
+      }
+
+      return {
+        availability: {
+          id: target.row.id,
+          kind: target.kind,
+          doctorId: doctor.id,
+          date: dto.date,
+          startTime: newStart,
+          endTime: newEnd,
+          ...(target.kind === 'recurring'
+            ? {
+                dayOfWeek: target.row.dayOfWeek,
+                slotDuration: target.row.slotDuration ?? null,
+              }
+            : { isUnavailable: target.row.isUnavailable }),
+        },
+        schedulingType: config.schedulingType,
+        maxCapacity,
+        createdSlots: createdSlots.map((s) => ({
+          id: s.id,
+          date: s.date,
+          startTime: this.fromDbTime(String(s.startTime)),
+          endTime: this.fromDbTime(String(s.endTime)),
+          isBooked: s.isBooked,
+        })),
+      };
     });
   }
 }

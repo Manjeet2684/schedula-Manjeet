@@ -23,6 +23,7 @@ import {
   CreateCustomAvailabilityDto,
   CreateRecurringAvailabilityDto,
   EffectiveDateQueryDto,
+  ExpandAvailabilityDto,
   UpdateRecurringAvailabilityDto,
 } from './dto/availability.dto';
 
@@ -63,6 +64,16 @@ export class AvailabilityController {
     @Body() dto: CreateCustomAvailabilityDto,
   ) {
     return this.availabilityService.upsertOverride(req.user.userId, dto);
+  }
+
+  /** More specific than PATCH :id — must be registered first. */
+  @Patch(':id/expand')
+  expand(
+    @Req() req: { user: JwtPayloadUser },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ExpandAvailabilityDto,
+  ) {
+    return this.availabilityService.expand(req.user.userId, id, dto);
   }
 
   @Patch(':id')

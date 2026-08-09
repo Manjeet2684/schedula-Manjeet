@@ -16,6 +16,7 @@ import { Slot } from '../../slots/slot.entity';
 export enum AppointmentStatus {
   BOOKED = 'BOOKED',
   CANCELLED = 'CANCELLED',
+  RESCHEDULE_NEEDED = 'RESCHEDULE_NEEDED',
 }
 
 @Entity('appointments')

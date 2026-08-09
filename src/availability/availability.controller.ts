@@ -24,6 +24,7 @@ import {
   CreateRecurringAvailabilityDto,
   EffectiveDateQueryDto,
   ExpandAvailabilityDto,
+  ShrinkAvailabilityDto,
   UpdateRecurringAvailabilityDto,
 } from './dto/availability.dto';
 
@@ -74,6 +75,15 @@ export class AvailabilityController {
     @Body() dto: ExpandAvailabilityDto,
   ) {
     return this.availabilityService.expand(req.user.userId, id, dto);
+  }
+
+  @Patch(':id/shrink')
+  shrink(
+    @Req() req: { user: JwtPayloadUser },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ShrinkAvailabilityDto,
+  ) {
+    return this.availabilityService.shrink(req.user.userId, id, dto);
   }
 
   @Patch(':id')

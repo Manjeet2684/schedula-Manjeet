@@ -6,6 +6,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Not, Repository } from 'typeorm';
+import {
+  Appointment,
+  AppointmentStatus,
+} from '../appointments/entities/appointment.entity';
 import { Doctor } from '../doctor/doctor.entity';
 import {
   DoctorScheduleConfig,
@@ -17,6 +21,7 @@ import {
   CreateCustomAvailabilityDto,
   CreateRecurringAvailabilityDto,
   ExpandAvailabilityDto,
+  ShrinkAvailabilityDto,
   UpdateRecurringAvailabilityDto,
 } from './dto/availability.dto';
 import { CustomAvailability } from './entities/custom-availability.entity';
@@ -525,6 +530,279 @@ export class AvailabilityService {
           endTime: this.fromDbTime(String(s.endTime)),
           isBooked: s.isBooked,
         })),
+      };
+    });
+  }
+
+  private appointmentDate(value: string | Date): string {
+    if (typeof value === 'string') {
+      return value.slice(0, 10);
+    }
+    return String(value).slice(0, 10);
+  }
+
+  private slotDurationMinutes(startTime: string, endTime: string): number {
+    return (
+      this.validation.toMinutes(this.fromDbTime(endTime)) -
+      this.validation.toMinutes(this.fromDbTime(startTime))
+    );
+  }
+
+  private isFullyInsideWindow(
+    startTime: string,
+    endTime: string,
+    winStart: string,
+    winEnd: string,
+  ): boolean {
+    const s = this.validation.toMinutes(this.fromDbTime(startTime));
+    const e = this.validation.toMinutes(this.fromDbTime(endTime));
+    const ws = this.validation.toMinutes(winStart);
+    const we = this.validation.toMinutes(winEnd);
+    return s >= ws && e <= we;
+  }
+
+  /**
+   * Shrink availability window (strict subset). STREAM: reassign or mark
+   * RESCHEDULE_NEEDED; delete only free slots outside the new bounds.
+   */
+  async shrink(userId: string, id: string, dto: ShrinkAvailabilityDto) {
+    const doctor = await this.requireDoctor(userId);
+    this.parseCalendarDate(dto.date);
+    this.validation.assertValidOverrideDate(dto.date);
+
+    const newStart = this.validation.normalizeTime(dto.startTime);
+    const newEnd = this.validation.normalizeTime(dto.endTime);
+
+    return this.dataSource.transaction(async (manager) => {
+      const target = await this.resolveOwnedAvailability(manager, doctor, id);
+      const currentStart = this.fromDbTime(String(target.row.startTime));
+      const currentEnd = this.fromDbTime(String(target.row.endTime));
+
+      this.validation.assertStrictSubsetShrink(
+        { startTime: currentStart, endTime: currentEnd },
+        { startTime: newStart, endTime: newEnd },
+      );
+
+      if (target.kind === 'custom' && target.row.isUnavailable) {
+        throw new BadRequestException(
+          'Cannot shrink an unavailable (blocked) override; clear the block first',
+        );
+      }
+
+      if (target.kind === 'custom') {
+        const customDate = this.appointmentDate(target.row.date as string);
+        if (customDate !== dto.date) {
+          throw new BadRequestException(
+            `Shrink date ${dto.date} does not match override date ${customDate}`,
+          );
+        }
+      } else {
+        const weekday =
+          JS_DAY_TO_ENUM[this.parseCalendarDate(dto.date).getDay()];
+        if (target.row.dayOfWeek !== weekday) {
+          throw new BadRequestException(
+            `Shrink date ${dto.date} is ${weekday}, but recurring availability is for ${target.row.dayOfWeek}`,
+          );
+        }
+      }
+
+      const config = await manager.findOne(DoctorScheduleConfig, {
+        where: { doctorId: doctor.id },
+      });
+      if (!config) {
+        throw new NotFoundException(
+          'No schedule configuration found for this doctor. Set one via POST /doctor/schedule-config.',
+        );
+      }
+
+      const dayAppointments = await manager.find(Appointment, {
+        where: { doctorId: doctor.id, date: dto.date },
+      });
+
+      const booked = dayAppointments.filter(
+        (a) => a.status === AppointmentStatus.BOOKED,
+      );
+
+      type Affected = {
+        appointmentId: string;
+        patientId: string;
+        previousStartTime: string;
+        previousEndTime: string;
+        resolution: 'REASSIGNED' | 'RESCHEDULE_NEEDED';
+        newStartTime?: string;
+        newEndTime?: string;
+        newSlotId?: string | null;
+      };
+      const affected: Affected[] = [];
+
+      if (config.schedulingType === SchedulingType.STREAM) {
+        const slots = await manager.find(Slot, {
+          where: { doctorId: doctor.id, date: dto.date },
+        });
+
+        const remainingFree = () =>
+          slots.filter(
+            (s) =>
+              !s.isBooked &&
+              this.isFullyInsideWindow(
+                String(s.startTime),
+                String(s.endTime),
+                newStart,
+                newEnd,
+              ),
+          );
+
+        for (const appt of booked) {
+          if (
+            this.isFullyInsideWindow(
+              String(appt.startTime),
+              String(appt.endTime),
+              newStart,
+              newEnd,
+            )
+          ) {
+            continue;
+          }
+
+          const prevStart = this.fromDbTime(String(appt.startTime));
+          const prevEnd = this.fromDbTime(String(appt.endTime));
+          const dur = this.slotDurationMinutes(prevStart, prevEnd);
+
+          const candidate = remainingFree().find(
+            (s) =>
+              this.slotDurationMinutes(
+                String(s.startTime),
+                String(s.endTime),
+              ) === dur,
+          );
+
+          if (candidate) {
+            if (appt.slotId) {
+              const oldSlot = slots.find((s) => s.id === appt.slotId);
+              if (oldSlot) {
+                oldSlot.isBooked = false;
+                await manager.save(oldSlot);
+              }
+            }
+            candidate.isBooked = true;
+            await manager.save(candidate);
+            appt.slotId = candidate.id;
+            appt.startTime = this.fromDbTime(String(candidate.startTime));
+            appt.endTime = this.fromDbTime(String(candidate.endTime));
+            appt.status = AppointmentStatus.BOOKED;
+            await manager.save(appt);
+            affected.push({
+              appointmentId: appt.id,
+              patientId: appt.patientId,
+              previousStartTime: prevStart,
+              previousEndTime: prevEnd,
+              resolution: 'REASSIGNED',
+              newStartTime: this.fromDbTime(String(candidate.startTime)),
+              newEndTime: this.fromDbTime(String(candidate.endTime)),
+              newSlotId: candidate.id,
+            });
+          } else {
+            if (appt.slotId) {
+              const oldSlot = slots.find((s) => s.id === appt.slotId);
+              if (oldSlot) {
+                oldSlot.isBooked = false;
+                await manager.save(oldSlot);
+              }
+            }
+            appt.status = AppointmentStatus.RESCHEDULE_NEEDED;
+            await manager.save(appt);
+            affected.push({
+              appointmentId: appt.id,
+              patientId: appt.patientId,
+              previousStartTime: prevStart,
+              previousEndTime: prevEnd,
+              resolution: 'RESCHEDULE_NEEDED',
+              newSlotId: appt.slotId ?? null,
+            });
+          }
+        }
+
+        const protectedSlotIds = new Set(
+          dayAppointments
+            .filter(
+              (a) =>
+                a.slotId &&
+                (a.status === AppointmentStatus.BOOKED ||
+                  a.status === AppointmentStatus.RESCHEDULE_NEEDED),
+            )
+            .map((a) => a.slotId as string),
+        );
+
+        for (const slot of slots) {
+          const inside = this.isFullyInsideWindow(
+            String(slot.startTime),
+            String(slot.endTime),
+            newStart,
+            newEnd,
+          );
+          if (inside) {
+            continue;
+          }
+          if (protectedSlotIds.has(slot.id)) {
+            continue;
+          }
+          if (!slot.isBooked) {
+            await manager.remove(slot);
+          }
+        }
+      } else {
+        for (const appt of booked.filter(
+          (a) => a.appointmentType === SchedulingType.WAVE,
+        )) {
+          if (
+            this.isFullyInsideWindow(
+              String(appt.startTime),
+              String(appt.endTime),
+              newStart,
+              newEnd,
+            )
+          ) {
+            continue;
+          }
+          const prevStart = this.fromDbTime(String(appt.startTime));
+          const prevEnd = this.fromDbTime(String(appt.endTime));
+          appt.startTime = newStart;
+          appt.endTime = newEnd;
+          await manager.save(appt);
+          affected.push({
+            appointmentId: appt.id,
+            patientId: appt.patientId,
+            previousStartTime: prevStart,
+            previousEndTime: prevEnd,
+            resolution: 'REASSIGNED',
+            newStartTime: newStart,
+            newEndTime: newEnd,
+            newSlotId: null,
+          });
+        }
+      }
+
+      target.row.startTime = newStart;
+      target.row.endTime = newEnd;
+      await manager.save(target.row);
+
+      return {
+        availability: {
+          id: target.row.id,
+          kind: target.kind,
+          doctorId: doctor.id,
+          date: dto.date,
+          startTime: newStart,
+          endTime: newEnd,
+          ...(target.kind === 'recurring'
+            ? {
+                dayOfWeek: target.row.dayOfWeek,
+                slotDuration: target.row.slotDuration ?? null,
+              }
+            : { isUnavailable: target.row.isUnavailable }),
+        },
+        schedulingType: config.schedulingType,
+        affectedAppointments: affected,
       };
     });
   }

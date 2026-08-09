@@ -149,3 +149,25 @@ export class ExpandAvailabilityDto {
   @Min(1, { message: 'capacity must be greater than 0' })
   capacity?: number;
 }
+
+/** Shrink an existing availability window (strict subset) for a target date. */
+export class ShrinkAvailabilityDto {
+  @IsString()
+  @IsNotEmpty()
+  @Matches(DATE_YYYY_MM_DD, {
+    message: 'date must be a valid calendar date in YYYY-MM-DD format',
+  })
+  date!: string;
+
+  @IsString()
+  @Matches(TIME_HH_MM, {
+    message: 'startTime must be in HH:mm format (00:00–23:59)',
+  })
+  startTime!: string;
+
+  @IsString()
+  @Matches(TIME_HH_MM, {
+    message: 'endTime must be in HH:mm format (00:00–23:59)',
+  })
+  endTime!: string;
+}

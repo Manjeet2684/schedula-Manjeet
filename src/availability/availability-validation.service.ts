@@ -185,4 +185,36 @@ export class AvailabilityValidationService {
     }
     return deltas;
   }
+
+  /**
+   * Shrink must be a strict subset of the current window:
+   * newStart >= currentStart AND newEnd <= currentEnd AND newStart < newEnd,
+   * and at least one bound must move inward.
+   */
+  assertStrictSubsetShrink(
+    current: TimeWindow,
+    proposed: TimeWindow,
+  ): void {
+    const curStart = this.toMinutes(this.normalizeTime(current.startTime));
+    const curEnd = this.toMinutes(this.normalizeTime(current.endTime));
+    const newStart = this.toMinutes(this.normalizeTime(proposed.startTime));
+    const newEnd = this.toMinutes(this.normalizeTime(proposed.endTime));
+
+    this.assertValidTimeRange(
+      this.normalizeTime(proposed.startTime),
+      this.normalizeTime(proposed.endTime),
+    );
+
+    if (newStart < curStart || newEnd > curEnd) {
+      throw new BadRequestException(
+        `Invalid shrink: new window (${this.normalizeTime(proposed.startTime)}–${this.normalizeTime(proposed.endTime)}) must stay inside the current window (${this.normalizeTime(current.startTime)}–${this.normalizeTime(current.endTime)}); expanding or shifting outward is not allowed`,
+      );
+    }
+
+    if (newStart === curStart && newEnd === curEnd) {
+      throw new BadRequestException(
+        'Invalid shrink: proposed window is identical to the current window; move start later and/or end earlier',
+      );
+    }
+  }
 }

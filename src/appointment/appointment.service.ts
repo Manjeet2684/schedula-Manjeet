@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -14,6 +15,10 @@ import { AvailabilityService } from '../availability/availability.service';
 import { CustomAvailability } from '../availability/entities/custom-availability.entity';
 import { RecurringAvailability } from '../availability/entities/recurring-availability.entity';
 import { Doctor } from '../doctor/doctor.entity';
+import {
+  NotificationType,
+} from '../notification/notification.entity';
+import { NotificationService } from '../notification/notification.service';
 import { Patient } from '../patient/patient.entity';
 import {
   DoctorScheduleConfig,
@@ -34,6 +39,8 @@ const SUGGESTION_LOOKAHEAD_DAYS = 21;
 
 @Injectable()
 export class AppointmentService {
+  private readonly logger = new Logger(AppointmentService.name);
+
   constructor(
     @InjectRepository(Appointment)
     private readonly appointmentRepo: Repository<Appointment>,
@@ -46,8 +53,48 @@ export class AppointmentService {
     @InjectRepository(DoctorScheduleConfig)
     private readonly configRepo: Repository<DoctorScheduleConfig>,
     private readonly availabilityService: AvailabilityService,
+    private readonly notificationService: NotificationService,
     private readonly dataSource: DataSource,
   ) {}
+
+  /** Never throws — notification failures must not affect appointment outcomes. */
+  private async notifyAppointmentEvent(
+    type: NotificationType,
+    appointment: {
+      id: string;
+      patientId: string;
+      appointmentDate?: string;
+      date?: string;
+      startTime: string;
+      doctor?: { fullName?: string };
+    },
+  ): Promise<void> {
+    try {
+      const doctorName = appointment.doctor?.fullName;
+      if (!doctorName) {
+        this.logger.warn(
+          `Skipping ${type} notification for appointment ${appointment.id}: doctor name unavailable`,
+        );
+        return;
+      }
+      const date =
+        appointment.appointmentDate ??
+        (appointment.date ? String(appointment.date).slice(0, 10) : '');
+      await this.notificationService.createAppointmentNotification({
+        type,
+        appointmentId: appointment.id,
+        patientId: appointment.patientId,
+        doctorName,
+        date,
+        time: this.fromDbTime(String(appointment.startTime)),
+      });
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      this.logger.error(
+        `Failed to create ${type} notification for appointment ${appointment.id}: ${detail}`,
+      );
+    }
+  }
 
   private normalizeTime(time: string): string {
     const parts = time.split(':');
@@ -344,7 +391,7 @@ export class AppointmentService {
     const endTime = this.normalizeTime(dto.endTime);
     this.assertNotPast(dto.date, startTime);
 
-    return this.dataSource.transaction(async (manager) => {
+    const result = await this.dataSource.transaction(async (manager) => {
       const slot = await manager
         .createQueryBuilder(Slot, 's')
         .setLock('pessimistic_write')
@@ -397,6 +444,12 @@ export class AppointmentService {
         }),
       );
     });
+
+    await this.notifyAppointmentEvent(
+      NotificationType.APPOINTMENT_BOOKED,
+      result,
+    );
+    return result;
   }
 
   async listMine(userId: string) {
@@ -422,7 +475,7 @@ export class AppointmentService {
   async cancel(userId: string, appointmentId: string) {
     const patient = await this.requirePatient(userId);
 
-    return this.dataSource.transaction(async (manager) => {
+    const result = await this.dataSource.transaction(async (manager) => {
       // Lock appointment only — Postgres forbids FOR UPDATE with nullable outer joins.
       const appointment = await manager
         .createQueryBuilder(Appointment, 'a')
@@ -463,6 +516,12 @@ export class AppointmentService {
         }),
       );
     });
+
+    await this.notifyAppointmentEvent(
+      NotificationType.APPOINTMENT_CANCELLED,
+      result,
+    );
+    return result;
   }
 
   async reschedule(
@@ -481,7 +540,7 @@ export class AppointmentService {
 
     const patient = await this.requirePatient(userId);
 
-    return this.dataSource.transaction(async (manager) => {
+    const result = await this.dataSource.transaction(async (manager) => {
       const appointment = await manager
         .createQueryBuilder(Appointment, 'a')
         .setLock('pessimistic_write')
@@ -538,6 +597,12 @@ export class AppointmentService {
         currentDate,
       );
     });
+
+    await this.notifyAppointmentEvent(
+      NotificationType.APPOINTMENT_RESCHEDULED,
+      result,
+    );
+    return result;
   }
 
   private async rescheduleToStream(

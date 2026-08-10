@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -14,6 +15,8 @@ import { AvailabilityService } from '../availability/availability.service';
 import { CustomAvailability } from '../availability/entities/custom-availability.entity';
 import { RecurringAvailability } from '../availability/entities/recurring-availability.entity';
 import { Doctor } from '../doctor/doctor.entity';
+import { NotificationType } from '../notification/notification.entity';
+import { NotificationService } from '../notification/notification.service';
 import { Patient } from '../patient/patient.entity';
 import { Slot } from '../slots/slot.entity';
 import {
@@ -49,6 +52,8 @@ export type WaveSlotView = {
 
 @Injectable()
 export class SchedulingService {
+  private readonly logger = new Logger(SchedulingService.name);
+
   constructor(
     @InjectRepository(DoctorScheduleConfig)
     private readonly configRepo: Repository<DoctorScheduleConfig>,
@@ -62,8 +67,35 @@ export class SchedulingService {
     private readonly slotRepo: Repository<Slot>,
     private readonly availabilityService: AvailabilityService,
     private readonly validation: SchedulingValidationService,
+    private readonly notificationService: NotificationService,
     private readonly dataSource: DataSource,
   ) {}
+
+  /** Never throws — notification failures must not affect booking outcomes. */
+  private async notifyBooked(
+    appointment: Appointment,
+    doctor: Doctor,
+  ): Promise<void> {
+    try {
+      const date =
+        typeof appointment.date === 'string'
+          ? appointment.date.slice(0, 10)
+          : String(appointment.date).slice(0, 10);
+      await this.notificationService.createAppointmentNotification({
+        type: NotificationType.APPOINTMENT_BOOKED,
+        appointmentId: appointment.id,
+        patientId: appointment.patientId,
+        doctorName: doctor.fullName,
+        date,
+        time: this.validation.fromDbTime(String(appointment.startTime)),
+      });
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      this.logger.error(
+        `Failed to create APPOINTMENT_BOOKED notification for appointment ${appointment.id}: ${detail}`,
+      );
+    }
+  }
 
   /**
    * Upsert persisted Slot rows for generated STREAM windows.
@@ -491,7 +523,7 @@ export class SchedulingService {
 
     this.validation.assertNotPastSlot(dto.date, wave.startTime);
 
-    return this.dataSource.transaction(async (manager) => {
+    const saved = await this.dataSource.transaction(async (manager) => {
       // Serialize concurrent WAVE bookings for this doctor via config-row lock.
       const lockedConfig = await manager
         .createQueryBuilder(DoctorScheduleConfig, 'c')
@@ -546,5 +578,8 @@ export class SchedulingService {
 
       return manager.save(appointment);
     });
+
+    await this.notifyBooked(saved, doctor);
+    return saved;
   }
 }

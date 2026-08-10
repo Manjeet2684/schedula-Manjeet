@@ -8,6 +8,7 @@ import { AppointmentModule } from './appointment/appointment.module';
 import { AuthModule } from './auth/auth.module';
 import { AvailabilityModule } from './availability/availability.module';
 import { DoctorModule } from './doctor/doctor.module';
+import { NotificationModule } from './notification/notification.module';
 import { PatientModule } from './patient/patient.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
 import { UsersModule } from './users/users.module';
@@ -55,6 +56,7 @@ import { UsersModule } from './users/users.module';
     AvailabilityModule,
     SchedulingModule,
     AppointmentModule,
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

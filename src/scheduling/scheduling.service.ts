@@ -471,7 +471,7 @@ export class SchedulingService {
       );
     }
 
-    return this.dataSource.transaction(async (manager) => {
+    const saved = await this.dataSource.transaction(async (manager) => {
       const slot = await manager
         .createQueryBuilder(Slot, 's')
         .setLock('pessimistic_write')
@@ -498,6 +498,9 @@ export class SchedulingService {
       });
       return manager.save(appointment);
     });
+
+    await this.notifyBooked(saved, doctor);
+    return saved;
   }
 
   /**

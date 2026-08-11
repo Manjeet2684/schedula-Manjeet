@@ -13,6 +13,7 @@ import {
 } from '../appointments/entities/appointment.entity';
 import { AvailabilityService } from '../availability/availability.service';
 import { Doctor } from '../doctor/doctor.entity';
+import { NotificationService } from '../notification/notification.service';
 import { Patient } from '../patient/patient.entity';
 import {
   DoctorScheduleConfig,
@@ -82,6 +83,9 @@ describe('AppointmentService', () => {
   const availabilityService = {
     getEffectiveForDate: jest.fn(),
   };
+  const notificationService = {
+    createAppointmentNotification: jest.fn().mockResolvedValue(null),
+  };
 
   const manager = {
     createQueryBuilder: jest.fn(),
@@ -116,6 +120,7 @@ describe('AppointmentService', () => {
           useValue: configRepo,
         },
         { provide: AvailabilityService, useValue: availabilityService },
+        { provide: NotificationService, useValue: notificationService },
         { provide: DataSource, useValue: dataSource },
       ],
     }).compile();

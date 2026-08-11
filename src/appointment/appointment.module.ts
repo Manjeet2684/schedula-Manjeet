@@ -4,6 +4,7 @@ import { Appointment } from '../appointments/entities/appointment.entity';
 import { AuthModule } from '../auth/auth.module';
 import { AvailabilityModule } from '../availability/availability.module';
 import { Doctor } from '../doctor/doctor.entity';
+import { NotificationModule } from '../notification/notification.module';
 import { Patient } from '../patient/patient.entity';
 import { DoctorScheduleConfig } from '../scheduling/entities/doctor-schedule-config.entity';
 import { Slot } from '../slots/slot.entity';
@@ -25,6 +26,7 @@ import { AppointmentService } from './appointment.service';
     ]),
     AuthModule,
     AvailabilityModule,
+    NotificationModule,
   ],
   controllers: [AppointmentController],
   providers: [AppointmentService],

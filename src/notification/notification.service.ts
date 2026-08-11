@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Patient } from '../patient/patient.entity';
@@ -141,5 +146,27 @@ export class NotificationService {
       where: { patientId: patient.id },
       order: { createdAt: 'DESC' },
     });
+  }
+
+  async markAsRead(userId: string, notificationId: string) {
+    const patient = await this.patientRepo.findOne({ where: { userId } });
+    if (!patient) {
+      throw new NotFoundException(
+        'Patient profile not found. Create a patient profile before viewing notifications.',
+      );
+    }
+
+    const notif = await this.notificationRepo.findOne({
+      where: { id: notificationId, patientId: patient.id },
+    });
+    if (!notif) {
+      throw new ForbiddenException(
+        'Notification not found for this patient',
+      );
+    }
+
+    notif.isRead = true;
+    await this.notificationRepo.save(notif);
+    return notif;
   }
 }

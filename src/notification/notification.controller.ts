@@ -1,4 +1,12 @@
-import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Param,
+  ParseUUIDPipe,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import {
   JwtAuthGuard,
   JwtPayloadUser,
@@ -18,5 +26,17 @@ export class NotificationController {
   @Get()
   listMine(@Req() req: { user: JwtPayloadUser }) {
     return this.notificationService.listForUser(req.user.userId);
+  }
+
+  /**
+   * Mark a notification as read.
+   * Patient-scoped via JWT (cannot mark others' notifications).
+   */
+  @Patch(':id/read')
+  markRead(
+    @Req() req: { user: JwtPayloadUser },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.notificationService.markAsRead(req.user.userId, id);
   }
 }
